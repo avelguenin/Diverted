@@ -47,7 +47,7 @@ function mulberry(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = 
     const r = mulberry(seed);
     await page.evaluate((lang) => { Game.newRun(); Game.setLang(lang); }, LANG);
     // lane: pick language
-    await clickChoice(LANG === 'fr' ? 'Voie B' : LANG === 'fi' ? 'Kaista C' : 'Lane A');
+    await clickChoice(LANG === 'fr' ? 'Voie B' : LANG === 'is' ? 'Rein C' : LANG === 'fi' ? 'Kaista D' : 'Lane A');
     const taken = {};
     const trace = [];
     let gatedEncounters = 0, gatedLabels = new Set();

@@ -108,7 +108,9 @@ def unescape_raw(raw):
     # source form -> real text (only the escapes we use)
     return raw.replace("\\'", "'").replace('\\n', '\n').replace('\\\\', '\\').replace('\\`', '`')
 
-def build(lang, dictfile):
+KEEP_LOCAL = {'fr'}   # languages where locals keep speaking English (LX lines untouched)
+
+def build(lang, dictfile, brokenfile=None):
     src = open(SRC, encoding='utf8').read()
     d = json.load(open(dictfile, encoding='utf8'))
     lits = scan(src)
@@ -116,6 +118,7 @@ def build(lang, dictfile):
     out, pos = [], 0
     for s, e, k, raw in lits:
         if not translatable(raw): continue
+        if lang in KEEP_LOCAL and src[max(0, s-4):s-1] == 'LX(': continue   # a local speaking: stays English
         key = unescape_raw(raw)
         if key not in d:
             missing.append(key); continue
@@ -125,11 +128,14 @@ def build(lang, dictfile):
     out.append(src[pos:])
     js = ''.join(out)
     js = js.replace("CONTENTS.en = (() => {", f"CONTENTS.{lang} = (() => {{", 1)
-    js = js.replace("return { start, scenes, endings, chat, ui, T, lang: 'en' };", f"return {{ start, scenes, endings, chat, ui, T, lang: '{lang}' }};")
+    js = js.replace("return { start, scenes, endings, chat, ui, T, lang: 'en', broken: CONTENT_BROKEN };", f"return {{ start, scenes, endings, chat, ui, T, lang: '{lang}', broken: CONTENT_BROKEN }};")
+    if brokenfile:
+        b = json.load(open(brokenfile, encoding='utf8'))
+        js = js.replace("const CONTENT_BROKEN = {};", "const CONTENT_BROKEN = " + json.dumps(b, ensure_ascii=False) + ";", 1)
     open(os.path.join(os.path.dirname(SRC), f'content.{lang}.js'), 'w', encoding='utf8').write(js)
     print(lang, 'built;', len(missing), 'missing keys')
     for m in missing[:20]: print('  MISSING:', m[:80])
 
 if __name__ == '__main__':
     if sys.argv[1] == 'extract': extract()
-    else: build(sys.argv[2], sys.argv[3])
+    else: build(sys.argv[2], sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else None)

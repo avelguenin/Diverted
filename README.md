@@ -4,7 +4,7 @@ Your flight from London to Los Angeles has landed in Reykjavík instead. Nobody 
 
 Trust the wrong mail, take the wrong bus, make the wrong complaint, and it's game over.
 
-A text-based browser game in English, French and Finnish (you pick a boarding lane). No install, no build step, no dependencies. The only external request is two Google Fonts (VT323, Press Start 2P); the game works without them. 20–30 minutes per run, 12 endings.
+A text-based browser game in English, French, Icelandic and Finnish (you pick a boarding lane). No install, no build step, no dependencies. The only external request is two Google Fonts (VT323, Press Start 2P); the game works without them. 20–30 minutes per run, 12 endings.
 
 ## Play it
 
@@ -20,14 +20,16 @@ Open `index.html` in a browser, or host it on GitHub Pages (below).
    engine.js
    content.js
    content.fr.js
+   content.is.js
    content.fi.js
+   design.html
    README.md
    DESIGN.md
    ```
 2. On GitHub: **Settings → Pages → Build and deployment → Source: “Deploy from a branch”**, branch `main`, folder `/ (root)`. Save.
 3. After a minute the game is live at `https://<your-username>.github.io/diverted/`.
 
-There is nothing to compile. Every file is served as-is; `index.html` loads `art.js`, the three content files, then `engine.js`.
+There is nothing to compile. Every file is served as-is; `index.html` loads `art.js`, the four content files, then `engine.js`. `design.html` is the design document rendered in the game's style, linked from the title screen; regenerate it with `python3 tools/build_design.py` after editing `DESIGN.md` (needs `pip install markdown`).
 
 ## Files
 
@@ -38,8 +40,9 @@ There is nothing to compile. Every file is served as-is; `index.html` loads `art
 | `art.js` | Procedural pixel art: a painter per scene (flickering vignettes) and a bus-portrait generator whose details are the tells. No image files. |
 | `engine.js` | The runner: scene graph, clock, scheduled messages, the two gauges and option gating, bus inspection, language switching, endings gallery (`localStorage`). No framework. |
 | `content.js` | Every word in the game (English): scenes, choices, messages, the chatbot's answers, buses, 12 endings, interface strings. This is the file to edit if you want to change the story. |
-| `content.fr.js`, `content.fi.js` | The French and Finnish versions, generated from `content.js` by string substitution (see DESIGN.md §5c). Edit the English, update the dictionary, and run `python3 tools/i18n.py build fr tools/dict_fr.json`. |
-| `tools/` | `i18n.py` (regenerates the French/Finnish content from `content.js` and the two dictionaries), `dict_fr.json`, `dict_fi.json`, and `playtest.js` (automated playtest policies; needs Node and Playwright). Not needed to play or deploy. |
+| `content.fr.js`, `content.is.js`, `content.fi.js` | The French, Icelandic and Finnish versions, generated from `content.js` by string substitution (see DESIGN.md §5c). Edit the English, update the dictionary, and run `python3 tools/i18n.py build fr tools/dict_fr.json tools/dict_fr_broken.json` (French), `python3 tools/i18n.py build is tools/dict_is.json`, `python3 tools/i18n.py build fi tools/dict_fi.json`. |
+| `design.html` | `DESIGN.md` rendered as a page in the game's style; linked from the title screen. |
+| `tools/` | `i18n.py` and the dictionaries (`dict_fr.json`, `dict_fr_broken.json`, `dict_is.json`, `dict_fi.json`), `build_design.py`, and `playtest.js` (automated playtest policies; needs Node and Playwright). Not needed to play or deploy. |
 | `DESIGN.md` | Design rationale — what was borrowed from *No, I'm Not a Human* and *Don't Look Outside*, how the source thread was adapted, why each mechanic exists. |
 
 ## Editing the story

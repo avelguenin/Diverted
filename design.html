@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DIVERTED — design notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+  .doc { max-width: 76ch; margin: 0 auto; padding: 0 16px 60px; }
+  .doc .topbar { margin-bottom: 28px; }
+  .doc h1 { font-family: var(--pixel); font-size: 20px; line-height: 1.6; color: var(--amber); letter-spacing: .06em; text-shadow: 0 0 10px rgba(226,166,64,.5); margin: 24px 0 18px; }
+  .doc h2 { font-family: var(--pixel); font-size: 11px; line-height: 1.8; color: var(--amber-dim); letter-spacing: .1em; text-transform: uppercase; margin: 44px 0 14px; padding-top: 14px; border-top: 2px dashed var(--edge); }
+  .doc h3 { font-family: var(--pixel); font-size: 9px; line-height: 1.8; color: var(--ink-dim); letter-spacing: .1em; text-transform: uppercase; margin: 28px 0 10px; }
+  .doc p, .doc li { font-size: 21px; line-height: 1.38; }
+  .doc ul { padding-left: 22px; }
+  .doc li { margin: 0 0 .5em; }
+  .doc strong { color: var(--ink); font-weight: normal; text-shadow: 0 0 6px rgba(226,166,64,.35); }
+  .doc em { color: var(--amber); font-style: normal; }
+  .doc code { font-family: var(--term); background: var(--bg-3); padding: 0 5px; border: 1px solid var(--edge); font-size: 19px; }
+  .doc pre { overflow-x: auto; background: var(--bg-2); border: 2px solid var(--edge); box-shadow: inset -2px -2px 0 var(--edge-dark), 0 0 0 2px var(--edge-dark); padding: 12px; font-family: var(--term); font-size: 18px; }
+  .doc pre code { background: none; border: 0; padding: 0; }
+  .doc blockquote { border-left: 4px solid var(--amber-dim); margin: 0; padding: 4px 16px; color: var(--ink-dim); }
+  .doc .tablewrap { overflow-x: auto; margin: 16px 0; }
+  .doc table { border-collapse: collapse; width: 100%; font-size: 18px; line-height: 1.3; }
+  .doc th, .doc td { text-align: left; vertical-align: top; padding: 8px 10px; border: 2px solid var(--edge); }
+  .doc th { font-family: var(--pixel); font-size: 8px; letter-spacing: .1em; color: var(--amber-dim); background: var(--bg-2); }
+  .doc tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+  .doc a { color: var(--amber); }
+  .back { display: inline-block; margin: 10px 0 0; font-family: var(--pixel); font-size: 9px; letter-spacing: .1em; color: var(--amber); text-decoration: none; border: 2px solid var(--edge); padding: 10px 14px; box-shadow: inset -2px -2px 0 var(--edge-dark), 0 0 0 2px var(--edge-dark); background: var(--bg-2); }
+  .back:hover { color: #fff; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-title">DIVERTED</span>
+      <span class="brand-sub">Albion Atlantic · AB 0271 · LHR → LAX · design notes</span>
+    </div>
+    <a class="back" href="index.html">‹ BACK TO THE GATE</a>
+  </header>
+  <h1>DIVERTED — design notes</h1>
+<blockquote>
+<p><em>"british airways chatbot, british airways email, and british airways SMS: one always tells the truth, one always lies, and one"</em>
+— the thread, tweet 29 of 67, unfinished</p>
+</blockquote>
+<p>This document explains what the game is trying to do and why each part of it is built the way it is. It is written for someone who wants to change the game, so it also points at the code.</p>
+<h2>1. The premise, and what the source thread gave us</h2>
+<p>The brief: a horror game where your London–LA flight lands in Reykjavík with no explanation and no plan, cryptic messages and mystery buses follow, and the company threatens to strand you if you complain. Wrong mail, wrong bus, wrong complaint: game over.</p>
+<p>The attached thread is not a horror story. It is a very funny, very tired account of a real diversion. But read as <em>system design</em> it is almost a finished game document, because the author keeps noticing the same three things:</p>
+<ol>
+<li><strong>Information does not come from where it should.</strong> Official channels (email, SMS, chatbot) are late, contradictory or physically impossible ("at 9:40 we received an email that said buses would pick us up at 9:00"). The reliable sources are <em>a water-stained A4 printout in Arial</em> and <em>random passengers conveying hearsay</em>.</li>
+<li><strong>The only way to know you are in the right place is to recognise other passengers</strong>, "despite not being very good with faces", and to notice that they are wearing the same clothes as last night.</li>
+<li><strong>Authority is polite, imperious, never sorry, and openly threatening</strong> ("I am in charge and the safety of our customers is tantamount"; "he'd strand people in Iceland if they resisted or objected").</li>
+</ol>
+<p>Plus one line that is literally a UI spec: <em>"imagine a video game meter but for my nerves, ticking down into the 'thin shaking sliver of red' zone."</em></p>
+<p>Every mechanic in the game is one of those observations, made literal. The horror is not added on top of the comedy; it is what the comedy is already about, with the reassurances removed.</p>
+<h3>Thread → game beat map</h3>
+<p>The game opens forty minutes before the thread does, at the gate, because the horror needs a <em>before</em>: a cabin that is normal for long enough that the player has a seat, a neighbour, a meal and a routine to lose. Every element of the later threat is planted there in an innocent form — the phrase in the safety demonstration, the headcount card, the purser's habit of looking at people rather than paperwork — so that when the threat comes it is recognised rather than introduced.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Thread</th>
+<th>Game</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A normal flight until it isn't; diverted for a medical emergency; deplaned at night; crew vanished at passport control</td>
+<td><code>boarding</code> → <code>takeoff</code> → <code>service</code> → <code>night</code>: four hours of an aircraft working exactly as it should, with a purser who greets faces not boarding passes, does the safety demonstration himself ("the safety of our customers is tantamount" said as the ordinary thing), follows the meal trolley without serving, and walks the dark aisle with a small card, counting; a curtain drawn at the front. Then <code>cabin</code>, and later <code>landing</code> — the crew walk through a door "that does not close so much as stop being a door"</td>
+</tr>
+<tr>
+<td>Passengers object to the diversion; the purser responds by threatening to strand anyone who objects</td>
+<td><code>cabin</code> → <code>cabin_purser</code>: the captain's announcement provokes the cabin (a man at the galley, a call button that won't stop), the player can join in, and the threat arrives <em>as the consequence</em> — plus the <strong>NOTED</strong> pips and the <code>objected</code> flag that follows you</td>
+</tr>
+<tr>
+<td>Email offers a hotel <em>at Heathrow</em></td>
+<td><code>heathrow</code>/<code>car</code> — the ACCOMMODATED ending</td>
+</tr>
+<tr>
+<td>No checked bags, everything closed, no food or toothpaste</td>
+<td>The hotel-night hub: crisps and mini wine ("girl dinner"), tiny shampoos, the 20-minute walk to the 10-11</td>
+</tr>
+<tr>
+<td>"Uniformed Icelanders telling us to not follow the directions in the emails and get on the buses instead"</td>
+<td><code>icelander</code> — "Don't follow the emails. There are buses."</td>
+</tr>
+<tr>
+<td>Buses of unknown origin, nobody announced them, one guy in a fleece said "supposedly"</td>
+<td>The bus-inspection scenes; hearsay as a resource</td>
+</tr>
+<tr>
+<td>The bus ride is worryingly long; toddler sighs "what a day"</td>
+<td><code>ride</code></td>
+</tr>
+<tr>
+<td>Email about "coaches" arrives 30 minutes after boarding, with no location</td>
+<td>Scheduled message system: <code>G.at(t + 30, 'email', …)</code>, stamped before it arrives</td>
+</tr>
+<tr>
+<td>Arial printout says 11:00; email at 9:40 says 9:00; chatbot says something else</td>
+<td>The <strong>Paper</strong> tab vs <strong>Mail</strong> vs <strong>Ally</strong>; the 09:00 decoy coach; NO-SHOW if you wait for the exact printed time</td>
+</tr>
+<tr>
+<td>"There was a bus outside… 'maybe you should hurry'" — recognising passengers is the only confirmation</td>
+<td><code>buses2</code>: the correct bus is the one with people in yesterday's clothes</td>
+</tr>
+<tr>
+<td>Hot springs suggestions from the mentions</td>
+<td>The TANTALUS ending and Jo's text</td>
+</tr>
+<tr>
+<td>UK261 FAQ turned into a QR code, shown to every passenger; "I'm ready to be a karen"</td>
+<td>The <code>uk261</code> flag and the <strong>COLLECTIVE</strong> meter; sharing it is the <em>safe</em> way to complain</td>
+</tr>
+<tr>
+<td>Kiosk fails twice; one counter; opens exactly 3 h before departure; departure keeps creeping</td>
+<td><code>airport</code> hub, the <code>dep</code> variable and the 12:00 "revised departure" email that moves the counter</td>
+</tr>
+<tr>
+<td>Gate agent screams about boarding groups, a hundred people laugh</td>
+<td><code>gate</code></td>
+</tr>
+<tr>
+<td>Jetbridge → a bus → an actual highway through pastures → "I think I see our airplane" → rain</td>
+<td><code>jetbridge</code>, <code>tarmac</code>, <code>plane</code></td>
+</tr>
+<tr>
+<td>"The majority of customers have been understanding and patient"; the wifi refund</td>
+<td>The good endings</td>
+</tr>
+<tr>
+<td>"See you in portland… or in greenland. or in hell."</td>
+<td>HOME (OR GREENLAND, OR HELL)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Names and the airline are fictional (Albion Atlantic, "We're doing our best"). The destination is Los Angeles per the brief. Keflavík is innocent.</p>
+<h2>2. What was borrowed from the two reference games</h2>
+<h3>From <em>No, I'm Not a Human</em>: screening by tells</h3>
+<p>The core loop of that game is: something arrives at your door claiming to be what you need; you inspect it for small physical tells; you let it in or you don't; the rules for what counts as a tell are drip-fed through an unreliable broadcast; being wrong is fatal; runs are short and the endings are collected.</p>
+<p>DIVERTED maps this one-to-one onto buses:</p>
+<ul>
+<li><strong>The visitor is a coach.</strong> Each bus scene (<code>buses1</code>, <code>buses2</code>, plus the single-bus traps <code>decoy_morning</code> and <code>walk</code>) presents 2–3 vehicles with a name, a sign, two visible details and two or three <strong>hidden details</strong> revealed by <em>Look closer</em>, which costs minutes. Boarding is the irreversible act.</li>
+<li><strong>The tells are diegetic and consistent across the whole game.</strong> The right bus always: has a handwritten or felt-tip sign (Arial/paper, never LED); has a driver in hi-vis who doesn't care about you; carries people you recognise, in the clothes they flew in. The wrong bus always: has the crest and the LED; has a driver in the <em>vanished crew's</em> uniform who is smiling at you specifically; carries rested strangers in clean shirts, who have no phones out. The third option (Flybus, Blue Lagoon shuttle) is the genuine-but-not-yours bus, whose tell is that its passengers have luggage or clean socks — things you conspicuously lack.</li>
+<li><strong>The broadcast that teaches the rules is hearsay.</strong> In NINAH it's the TV. Here it is the Icelander, the man in the fleece, the woman with the toddler, the man in the Blazers cap, and an anonymous +354 text: "dont get on the nice one". Talking to people raises a hidden collective count and unlocks hint lines under the scene text. The official channels, by contrast, are the <em>lie</em> channel. The player has to learn that the logo is the tell for danger — inverting the trust hierarchy the airline's branding is designed to install.</li>
+<li><strong>Details are randomised per run</strong> (order, livery, wording of the paper sign) with a seeded RNG, so the answer can't be memorised as "the left one"; it has to be <em>read</em>. <code>G.pick</code> / <code>G.shuffle</code> in <code>content.js</code>.</li>
+<li><strong>Permadeath, short runs, an endings gallery.</strong> A run is 20–30 minutes. Twelve endings, ten bad, stored in <code>localStorage</code> and shown as locked cards with a one-line hint so the gallery itself is a soft guide ("Someone always makes an announcement." / "It had a crest on it. It was very nice.").</li>
+</ul>
+<h3>From <em>Don't Look Outside</em>: the room, the needs, the rule</h3>
+<p>That game's contribution is the shape of the middle act: you are confined; you have small mundane needs (eat, sleep, keep it together); night is the danger window; and there is a stated rule that the whole game is really about whether you will break it.</p>
+<ul>
+<li><strong>The rooms.</strong> The hotel is four hub scenes — <code>room</code>, <code>corridor</code>, <code>lobby</code>, <code>carpark</code> — you move between, plus the road to the 10-11. The action lists <em>are</em> the thread's inventory of small miseries: no toothpaste, the tiny shampoos, crisps-and-mini-wine, looking up your rights, posting about it, the ice machine, the night clerk's crossword. Nothing here is a puzzle; it is texture, and every action returns a different paragraph (§5), so the same room is never the same room twice.</li>
+<li><strong>The needs are not a survival sim.</strong> There is no hunger clock. Food, tea, a shower, other people and sleep matter only because they pull the two gauges down a little (§4b); doing nothing is always allowed and nothing here starves you.</li>
+<li><strong>The rule.</strong> "Please do not look out of the window", delivered by the chatbot at 04:50, is the one explicit <em>Don't Look Outside</em> homage. Looking is <em>not</em> fatal — that would be a cheap trick — but it sets <code>seen</code>, which the purser references later, on the tarmac bus: "You looked." The cost is dread carried forward, not a game over. The knock at 04:30 ("Coach for Albion Atlantic passengers. Departing now. Last call.") is the night's real test: it is the <em>chatbot's</em> stated time, and only the paper sign contradicts it.</li>
+<li><strong>Night as the danger window.</strong> Every lethal hotel choice is nocturnal (the walk, the knock — which finds you wherever you are, in the room or in the corridor — the coach in the car park, the lift that arrives on its own; the window is the sub-lethal one). The morning is comparatively safe until the buses come, which is how the reference game paces it too: chores, then the door.</li>
+</ul>
+<h2>3. The three channels ("one always tells the truth, one always lies, and one")</h2>
+<p>The thread never finished the sentence. The game does, roughly:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Channel</th>
+<th>Behaviour</th>
+<th>How it's built</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Mail</strong> (Albion Atlantic, with crest)</td>
+<td>Always <em>late</em> and about the wrong thing. Sent-time and received-time are shown separately so the player can see the 09:00 bus email arriving at 09:40.</td>
+<td><code>G.at()</code> with <code>stamp</code> earlier than delivery; the email view prints both.</td>
+</tr>
+<tr>
+<td><strong>Ally</strong> (chatbot)</td>
+<td>Always <em>lies</em>, but specifically and usefully: it names the trap you are about to walk into (03:40 coach, 08:00 transfer, "room 214, do not look out of the window"). Also the fastest way to get NOTED.</td>
+<td><code>CONTENT.chat</code> — answers are functions of state; "I want to complain" calls <code>G.strike()</code>.</td>
+</tr>
+<tr>
+<td><strong>SMS</strong></td>
+<td>Sparse. Two from the airline (wrong), one from a friend (hot springs), one from an unknown number (right).</td>
+<td>Plain bubbles; the unknown number is the game's only unambiguous hint and it is deliberately deniable.</td>
+</tr>
+<tr>
+<td><strong>Paper</strong></td>
+<td><em>The truth.</em> Anything printed in Arial and taped to something. The player photographs it and it goes in a tab rendered in actual Arial with a water stain.</td>
+<td><code>renderPaper()</code> in <code>engine.js</code>; <code>.paper-sheet</code> in CSS.</td>
+</tr>
+</tbody>
+</table></div>
+<p>The design goal is that by the second bus scene the player is checking the Paper tab first and reading the crest as a threat. That reversal — the branded, designed, professionally worded channel is the dangerous one; the ugly hand-made one is safe — is the game's thesis and it comes straight from tweet 32: "hundreds of other people who choose to trust the waterstained arial font printout over the emails with the BA logo, because we all know better."</p>
+<h2>4. Complaining</h2>
+<p>The brief says <em>make the wrong complaint</em> is a fail state. The thread supplies the taxonomy:</p>
+<ul>
+<li>Complaining <strong>to the airline</strong> — in the cabin, to the chatbot, at the counter, at the gate, or by demanding your bag — is <strong>NOTED</strong>. One pip each. The purser writes on a small card. At three the airline acts on it <em>where it can</em> — at the check-in counter or the gate, never in the hotel — and it is LEFT BEHIND: "customers who resist or object to operational decisions may be offloaded", said without any unkindness at all.</li>
+<li>Complaining <strong>to each other</strong> — comparing notes, sharing the UK261 QR code, laughing at the gate agent — is counted silently. It is the only kind that helps. It unlocks hints and, at 5+, the better ending, THE SELF-GOVERNING COLLECTIVE OF LHR–LAX, which is the thread's own phrase for what the passengers became.</li>
+</ul>
+<p>There is one hidden complaint: confirming the Heathrow hotel then <em>not</em> getting in the car sets <code>booked</code>, and the check-in agent later notes that "our records show you were accommodated" — a strike you earned twelve hours earlier by trusting an email. That's the "trust the wrong mail" consequence for players who dodged the immediate one.</p>
+<h2>4b. The two gauges: what they do and, more importantly, what they don't</h2>
+<p>The first draft had a nerves bar that emptied and killed you, and red-marked dangerous options. Both are gone. The rules now:</p>
+<ul>
+<li><strong>Two gauges, both fill, neither ends the game.</strong> NERVES fills with confrontation and stress; DREAD fills with compliance and with looking at things you were told not to look at. Small choices move them a few points. Time moves them a little (nerves +1 per 40 minutes awake; dread +1 per 30 minutes between midnight and dawn). Sleep, food, a shower, a laugh, and other people pull them down. There is no "meter hits max → death" moment anywhere in the game.</li>
+<li><strong>Their only effect is to close options.</strong> Every choice can carry a <code>nerveMax</code> or a <code>dreadMax</code>. When a gauge is past that number the option is still listed, but crossed out and disabled, with one of two fixed phrases: <em>"You couldn't keep your voice steady for that."</em> (nerves) or <em>"You can't bring yourself to."</em> (dread). High nerves take away the calm, patient, sociable options and leave the confrontational ones. High dread takes away the defiant, independent options and leaves the compliant ones. So the gauges never kill you; they leave you with the choices you would have made anyway if you were that frayed or that cowed, and <em>some</em> of those are lethal.</li>
+<li><strong>No single failure point.</strong> Thresholds are per option and deliberately uneven: talking to the older couple needs nerves ≤75, the fleece man ≤90; refusing the knock needs dread ≤80, backing away from the spyhole ≤88, walking to the 10-11 ≤70, the fire stairs ≤92. A player who has been mostly compliant all night arrives at the knock with dread in the eighties and finds that "don't open" is gone — but "look through the spyhole" is still there, and behind it one more chance. Every funnel has more than one wall, and every wall is in a different place.</li>
+<li><strong>Two kinds of option, two motifs, never labelled.</strong> Confrontational options (<code>kind: 'conflict'</code>) carry the nerves bar's motif: a red left edge that thickens and a text-shadow that reddens as nerves rise, and at the top tiers they shake. Compliant options (<code>kind: 'comply'</code>) carry the dread bar's motif: the airline's navy wash and a gold glow that intensify as dread rises, a gold ✦ in place of the chevron, and the text grows a little. The bars use the same colours, so after a run or two the player can work out which bar governs which family — the game never says. That is the teaching loop the brief asked for: you learn across runs what kind of option each thing is, before you learn whether it is good or bad.</li>
+<li><strong>Neither family is "the bad one".</strong> Some compliant options are correct (stay seated on the tarmac bus, board by group, don't look out of the window, wait for the counter); some confrontational ones are correct or harmless (object in the cabin, demand your bag, ask the driver). Some of each are game over (open the door, get in the lift, board the crested coach; demand to be let off the tarmac bus). The motif tells you the <em>temperament</em> of a choice, not its outcome.</li>
+<li><strong>Repetition is cheap.</strong> Doing the same thing twice in the same place costs half as much on the gauges (<code>engine.js</code>, <code>choose()</code>), so a player who checks the door four times is anxious, not doomed.</li>
+<li><strong>Tuning.</strong> Automated playtest policies (<code>tools/playtest.js</code>: compliant, confrontational, random, "sensible", and a hand-written careful route) were run in all three languages. A careful run ends around nerves 0–10 and dread 60 with no option ever gated; a purely compliant run reaches the knock with dread 70–100 and is usually funnelled into NIGHT COACH or THE LIFT; a confrontational run reaches nerves 75–100, loses the ability to laugh at the gate or wait at the counter, and collects NOTED pips until check-in. Random explorers who poke every dark corner saturate both bars by 04:00, which is the intended punishment for treating the hotel as a checklist.</li>
+</ul>
+<h2>5. Text that never repeats</h2>
+<p>Hub scenes build their paragraph from three parts (<code>hub()</code> in <code>content.js</code>): a short fixed status line that says where you are and what is wrong with you (<em>"Room 214. 03:40. You are too tired to sleep, and your teeth are dirty, and you have not eaten."</em>), the outcome of what you just did (<code>G.note()</code>, set by the action), and one ambient line drawn from a pool for that place. Ambient lines carry a dread tier; the picker prefers lines at or just below the current tier and never repeats the last one used, so the same lobby at dread 2 is a crossword and a tour poster, and at dread 5 the clerk says "He asked for you" without looking up. Repeatable actions (checking the door, the television, the window, the ice machine, the vending machine) key their outcome on how many times you have done them and on dread, so the fourth door-check reads differently from the first. Nothing in a hub renders the same paragraph twice in a row.</p>
+<h2>5b. Escalation</h2>
+<p>Dread also drives the presentation, in six tiers (<code>data-dread</code> on the root element, set from the gauge):</p>
+<ul>
+<li>The page darkens: the vignette closes in, the scanlines thicken, the title flickers faster, at tier 5 the scene text jitters, at tier 6 the location line turns red.</li>
+<li>The clock lies: from tier 3, every few seconds it shows <code>--:--</code> or a time from hours ago for a fifth of a second.</li>
+<li>The pictures degrade: from tier 3 a figure in navy with a white collar appears at the edge of scene vignettes, more often as dread rises; from tier 4 frames occasionally drop to black; the redraw rate climbs.</li>
+<li>The chatbot gets closer: from tier 3 Ally's answers gain a second line (<em>"You are still in room 214."</em>, <em>"Please remain where you are."</em>); at tier 5, <em>"Why are you still here?"</em></li>
+<li>The phone battery falls from 31% at Heathrow to single digits by the gate, and there is no charger, because the charger is in the bag, and the bag is in the system.</li>
+<li>Daylight helps: sleeping (or failing to) at 07:30 takes 25 points off dread. The airport and the gate put some of it back.</li>
+</ul>
+<h2>5c. Four languages, four lanes</h2>
+<p>The game exists in English, French, Icelandic and Finnish. The choice is made in the game's first scene: boarding at Heathrow, four lanes, four signs (<em>Lane A · English / Voie B · Français / Rein C · Íslenska / Kaista D · Suomi</em>), a gate agent screaming about lanes — the mirror image of the Keflavík gate agent screaming about groups fourteen hours later. Picking a lane sets the language the airline has promised to serve you in.</p>
+<p>Why these four, for the record: English because the source thread is English; French because the author is French and wants to show the game to his family; Finnish because the author, at the end of a long day, briefly believed Reykjavík was in Finland, and the version was kept as a monument to that; Icelandic because Reykjavík is, on reflection, in Iceland.</p>
+<p>Who speaks what is part of the design, not an accident of translation:</p>
+<ul>
+<li><strong>The airline speaks your language badly.</strong> In the French and Icelandic versions the emails, the chatbot, the purser's announcements and the counter staff are rendered in machine-translated, half-broken French or Icelandic — English word order, wrong cases, "tantamount" left untranslated, the tagline calqued into <em>Nous faisons notre meilleur</em> / <em>Við erum að gera okkar best</em>. "We are proud to serve you in the language of your choice" is the airline's promise, and this is what the promise is worth. It is also a small horror device: the only voice with authority is the one that cannot quite speak to you.</li>
+<li><strong>The locals speak well.</strong> In the Icelandic version the airport woman and the night clerk speak proper Icelandic — they are the honest voices, and they are at home. In the French version they answer in English (a French traveller in Keflavík would be spoken to in English), which is left untranslated inside the French narration; if you ask them whether they speak French, they switch to a halting, kindly French for the rest of the night (<em>« Onze. C'est écrit onze. Peut-être vous dormir. »</em>). The prompt is a real option in the airport and the lobby, French version only.</li>
+<li><strong>The Finnish version</strong> is a straight translation, revised for naturalness after a Finnish reader pointed out the first draft's anglicisms; the Icelandic and French narration got the same revision pass (the French also follows the spaced en-dash convention, « – », never the em dash, outside the airline's own copy). All three should still be read by a native before anyone is shown them in earnest.</li>
+</ul>
+<p>Mechanically, <code>content.js</code> is the source of truth; the other three files are generated from it by substituting every string literal through a dictionary (<code>tools/i18n.py</code>, <code>tools/dict_*.json</code>), so the four versions cannot drift in logic, only in prose. Lines spoken by locals are wrapped in <code>LX(...)</code> in the source; the generator leaves those in English for French, and the French file carries a second small table (<code>tools/dict_fr_broken.json</code>) for the halting-French variant. The engine holds a <code>CONTENTS</code> registry and swaps the active one when a lane is chosen; the lane scene itself lives in <code>engine.js</code> because it is the one scene that has to exist before there is a language.</p>
+<p><strong>The title screen</strong> is the one place a visitor arrives before choosing a language, so it behaves like an airport information display: every few seconds it flips through the four languages — subtitle, blurb and buttons — with a split-flap animation, and stops flipping the moment a lane is chosen. Nothing on it says "select language"; it just keeps showing you your own until you board.</p>
+<h2>6. Tone</h2>
+<p>The thread is deadpan, and deadpan is the correct register for dread. So:</p>
+<ul>
+<li><strong>The reason for the diversion is never explained beyond what the thread had.</strong> The thread only ever has it second-hand: "a medical emergency", a purser implying the passenger is in first class, and at the end "allegedly in intensive care — I do not know how trustworthy that update is". The game keeps exactly that: the captain says a customer is unwell, a curtain is drawn, if you walk past it you see someone on the galley floor and a blanket and are not told what is wrong, and the good ending wishes "the man in intensive care" well on hearsay. Nothing is ever confirmed, and no ending explains it.</li>
+<li><strong>No jump scares, no gore, nothing supernatural is ever confirmed.</strong> The crew "vanish". The coach passengers are "rested". The carpet is wet. The purser looks up at your window. That is as explicit as it gets. The player's imagination does the rest, which is cheaper and scarier.</li>
+<li><strong>The airline's voice never changes.</strong> Every threat is delivered in customer-service English. "We're doing our best" appears in the cabin, in every email footer, at the coach door in the dark, and at the check-in counter. The last one is in daylight and it is meant to be the worst.</li>
+<li><strong>Real jokes are kept intact</strong> — the second kiosk, girl dinner, the wifi refund — because they are what a person actually notices at hour 26, and because the laughter <em>is</em> the survival mechanic. Every laugh in the game takes a few points off both gauges.</li>
+<li><strong>Iceland is not the threat.</strong> The thread is emphatic on this and so is the game: the Icelander is the first honest voice, the 10-11 is "lit like a shrine", the PASTURES ending has very nice sheep.</li>
+</ul>
+<h2>7. Visual design</h2>
+<p>Both reference games are low-resolution, murky, and let you <em>look</em> at the thing you are deciding about. The graphics here follow that, with one constraint: no image files. Everything is drawn procedurally in <code>art.js</code> into a tiny canvas (160×72 for scenes, 128×64 for buses) and scaled up with <code>image-rendering: pixelated</code>, so the repo stays six text files and the look is consistent at any size.</p>
+<ul>
+<li><strong>Scene vignettes.</strong> Every scene and ending carries an <code>art</code> key that picks a painter: the cabin with its lit seatbelt sign, the fridge-lit terminal with the door that says nothing, the sodium-lamp coach stand, the road through the lava, room 214's window (which shows the coach in the car park only if you have looked), the corridor with the wet carpet, the lobby with the A4 sign, the departure board with one red row, the jetbridge that ends in a bus, the pastures, the aircraft in the rain. They redraw twice a second with a new seed, so tubes flicker, rain falls and people shift — the <em>Don't Look Outside</em> trick of a still frame that is not quite still. Redraws stop under <code>prefers-reduced-motion</code>.</li>
+<li><strong>Bus portraits.</strong> Each coach card has an illustration generated from a small spec (<code>livery</code>, <code>windows</code>, <code>passengers</code>, <code>sign</code>, <code>driver</code>). This is the <em>No, I'm Not a Human</em> peephole: the tells are visible before you read a word, if you know to look. The crested coach has warm, bright windows and one identical upright silhouette in every window. The plain coach has dim windows and passengers slumped at different heights, some windows empty, one with two people. The Flybus has luggage racks. The lagoon shuttle has towels. The driver wears a hi-vis, a navy jacket with a white collar, or nothing in particular. None of this is labelled; a second run teaches you to read it.</li>
+<li><strong>The frame.</strong> A single dark theme, deliberately: it is 2am in a closed airport in every scene. Surfaces are a warm near-black with a 4px dither pattern; panels have a two-pixel bevel with a hard shadow, like a 1990s dialog box that has been left in a smoking room. Body text is set in VT323 (a terminal face) at 21px for legibility, labels and titles in Press Start 2P, both from Google Fonts with Courier fallbacks. Both gauges are segmented bars: nerves in red, shaking at the top; dread in the airline's navy-to-gold, glowing at the top. A full-page vignette darkens the corners and faint scanlines sit over everything. The phone keeps its own modern system-font styling on purpose: it is the one clean, corporate, well-designed object in the game, and it is the one lying to you.</li>
+</ul>
+<h2>8. Interface</h2>
+<ul>
+<li><strong>Two panes: the world and the phone.</strong> The thread was written <em>on a phone, in the situation</em>, so the phone is a permanent second character. On desktop it is a sticky column with a battery that runs down over the day; on mobile it is a bottom sheet behind a PHONE button with an unread badge. Toasts announce arrivals so the player feels the buzz at the same moment the narrator does.</li>
+<li><strong>The departure-board aesthetic.</strong> Amber on black, monospace, a faint scanline, a title that flickers every few seconds. Email gets the airline's navy-and-gold header; the chatbot gets rounded bubbles and emoji; paper gets Arial and a stain. Each channel <em>looks</em> like its level of trustworthiness, which is the joke.</li>
+<li><strong>The clock is always visible</strong> because every horror beat in the source is a timing beat (the email at 9:40 about 9:00; the counter at exactly 3 hours). Time only advances through choices; there is no real-time pressure, so reading is always free.</li>
+<li><strong>Accessibility:</strong> pixel fonts fall back to Courier if Google Fonts is unreachable; body text is 21px for the terminal face's legibility; no information is carried by colour alone; <code>prefers-reduced-motion</code> disables all animation including the vignette redraws; <code>aria-live</code> on the status bar and toasts; keyboard-focusable choices; canvases are <code>aria-hidden</code> because every visual tell is also written on the card.</li>
+</ul>
+<h2>9. Technical choices</h2>
+<ul>
+<li><strong>Vanilla HTML/CSS/JS, no build.</strong> The requirement is GitHub Pages; the simplest thing that deploys there is static files, and a text game does not need a framework. <code>engine.js</code> is ~370 lines and knows nothing about the story; <code>content.js</code> is the story and knows nothing about the DOM; <code>art.js</code> knows nothing about either and only paints what it is asked to.</li>
+<li><strong>Scenes are plain objects with function-valued fields.</strong> Text, location, choices and even bus lists can be <code>(G) =&gt; …</code> so they react to time and flags. This keeps conditional narrative in one place instead of scattering scene variants.</li>
+<li><strong>A tiny scheduled-message queue</strong> (<code>S.sched</code>, drained by <code>advance()</code>) is what makes the "email arrives 30 minutes after you boarded" gag work mechanically rather than as a line of prose.</li>
+<li><strong>Seeded RNG per run</strong> (<code>mulberry32</code>) so a run is reproducible from its seed if you ever want to add a "share this run" feature.</li>
+<li><strong><code>localStorage</code> only for the endings gallery, a run counter and the last language</strong>, guarded with <code>try/catch</code> for private windows. No save-in-progress: runs are 20 minutes and permadeath is the point.</li>
+</ul>
+<h2>10. Things I'd add with more time</h2>
+<ul>
+<li>A <strong>"What happened"</strong> post-mortem after each death showing the tell you missed (NINAH-style), pulled from the bus's <code>hidden</code> array.</li>
+<li><strong>Sound</strong>: a single looping air-handling hum, a phone buzz, and nothing else.</li>
+<li>A <strong>second night</strong> for players who miss the flight non-fatally, with the hotel emptier and the crested coach parked closer.</li>
+<li><strong>Difficulty</strong>: a "Business Class" mode that removes the written tells from the bus cards, leaving only the pixel portraits to read.</li>
+</ul>
+  <p><a class="back" href="index.html">‹ BACK TO THE GATE</a></p>
+</div>
+<div class="scanlines" aria-hidden="true"></div>
+<div class="vignette-overlay" aria-hidden="true"></div>
+</body>
+</html>

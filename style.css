@@ -161,6 +161,9 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
 .gallery .g b { display: block; font-family: var(--pixel); font-size: 8px; line-height: 1.6; letter-spacing: .05em; margin-bottom: 6px; font-weight: normal; }
 
 /* title */
+a.choice { text-decoration: none; display: block; }
+.flip { animation: flip .45s steps(6) both; }
+@keyframes flip { 0% { opacity: .2; transform: translateY(-2px) scaleY(.7); } 50% { opacity: .6; transform: scaleY(1.05); } 100% { opacity: 1; transform: none; } }
 .title-card { padding: 10px 0 30px; max-width: 60ch; }
 .title-big { font-family: var(--pixel); font-size: 44px; letter-spacing: .08em; color: var(--amber); line-height: 1; animation: flicker 7s infinite; text-shadow: 0 0 12px rgba(226,166,64,.6), 3px 3px 0 var(--edge-dark); margin-top: 8px; }
 .title-sub { color: var(--ink-dim); margin: 12px 0 20px; letter-spacing: .08em; font-size: 18px; }

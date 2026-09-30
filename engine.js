@@ -14,11 +14,12 @@ const Game = (() => {
   const LANE = {
     art: 'gate',
     loc: 'London Heathrow · Gate 12 · Boarding',
-    text: 'A gate agent gets on the microphone. <em>Please board by lane.</em> Three lanes, three signs, and a queue that is already ignoring them. Albion Atlantic is proud to serve you in the language of your choice.\n\nUn agent prend le micro. <em>Veuillez embarquer par voie.</em> Trois voies, trois panneaux, et une file qui les ignore déjà. Albion Atlantic est fière de vous servir dans la langue de votre choix.\n\nPortin virkailija tarttuu mikrofoniin. <em>Siirtykää koneeseen kaistoittain.</em> Kolme kaistaa, kolme kylttiä ja jono, joka ei välitä niistä. Albion Atlantic palvelee teitä ylpeänä valitsemallanne kielellä.',
+    text: 'A gate agent gets on the microphone. <em>Please board by lane.</em> Four lanes, four signs, and a queue that is already ignoring them. Albion Atlantic is proud to serve you in the language of your choice.\n\nUn agent prend le micro. <em>Veuillez embarquer par voie.</em> Quatre voies, quatre panneaux, et une file qui les ignore déjà. Albion Atlantic est fière de vous servir dans la langue de votre choix.\n\nPortin virkailija tarttuu mikrofoniin. <em>Siirtykää koneeseen kaistoittain.</em> Neljä kaistaa, neljä kylttiä ja jono, joka ei välitä niistä. Albion Atlantic palvelee teitä ylpeänä valitsemallanne kielellä.\n\nHliðvörður tekur hljóðnemann. <em>Vinsamlegast farið um borð eftir reinum.</em> Fjórar reinar, fjögur skilti, og biðröð sem er þegar farin að hunsa þau. Albion Atlantic er stolt af því að þjóna þér á því tungumáli sem þú kýst.',
     choices: [
       { label: 'Lane A · English', sub: 'Please have your boarding pass ready.', do: (G) => G.lang('en'), time: 30, next: 'boarding' },
       { label: 'Voie B · Français', sub: 'Veuillez préparer votre carte d\'embarquement.', do: (G) => G.lang('fr'), time: 30, next: 'boarding' },
-      { label: 'Kaista C · Suomi', sub: 'Pitäkää tarkastuskorttinne valmiina.', do: (G) => G.lang('fi'), time: 30, next: 'boarding' },
+      { label: 'Rein C · Íslenska', sub: 'Hafið brottfararspjaldið tilbúið.', do: (G) => G.lang('is'), time: 30, next: 'boarding' },
+      { label: 'Kaista D · Suomi', sub: 'Pitäkää tarkastuskorttinne valmiina.', do: (G) => G.lang('fi'), time: 30, next: 'boarding' },
     ],
   };
 
@@ -120,12 +121,12 @@ const Game = (() => {
       let c = pool.filter((l) => l.d <= d && l.d >= d - 1);
       if (c.length < 2) c = pool.filter((l) => l.d <= d);
       const prev = S.ambLast[key];
-      const c2 = c.filter((l) => l.t !== prev);
+      const c2 = c.filter((l) => l !== prev);
       if (c2.length) c = c2;
       if (!c.length) c = pool;
       const l = c[Math.floor(rng() * c.length)];
-      S.ambLast[key] = l.t;
-      return l.t;
+      S.ambLast[key] = l;
+      return typeof l.t === 'function' ? l.t() : l.t;
     },
     battery: () => Math.max(2, 31 - Math.floor((S.t - CONTENT.start.t) / 45)),
     lang: (code) => setLang(code),
@@ -300,21 +301,46 @@ const Game = (() => {
     return null;
   }
 
+  // The title screen is a departure board: like an airport display it flips
+  // through the four languages every few seconds, so a visitor who does not
+  // read English still sees their own before choosing a lane.
+  let titleTimer = null;
+  const LANGS = ['en', 'fr', 'is', 'fi'];
   function renderTitle(root, sc) {
+    if (titleTimer) { clearInterval(titleTimer); titleTimer = null; }
     const card = el('div', 'title-card');
     const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); card.appendChild(cv); ART.scene(cv, 'terminal', G);
     card.appendChild(el('div', 'title-big', 'DIVERTED'));
-    card.appendChild(el('div', 'title-sub', CONTENT.ui.subtitle));
+    const sub = el('div', 'title-sub'); card.appendChild(sub);
     card.appendChild(el('pre', 'title-board', esc(sc.board)));
-    const txt = el('div', 'text');
-    paragraphs(sc.text).forEach((p) => txt.appendChild(el('p', null, p)));
-    card.appendChild(txt);
-    const ch = el('div', 'choices');
-    const b1 = el('button', 'choice', CONTENT.ui.start); b1.onclick = newRun; ch.appendChild(b1);
-    const b2 = el('button', 'choice', CONTENT.ui.howto); b2.onclick = () => show('howto'); ch.appendChild(b2);
-    const b3 = el('button', 'choice', `${CONTENT.ui.endings} (${unlocked().length}/${Object.keys(CONTENT.endings).length})`); b3.onclick = () => show('gallery'); ch.appendChild(b3);
-    card.appendChild(ch);
+    const txt = el('div', 'text'); card.appendChild(txt);
+    const ch = el('div', 'choices'); card.appendChild(ch);
+    const b1 = el('button', 'choice'); b1.onclick = newRun; ch.appendChild(b1);
+    const b2 = el('button', 'choice'); ch.appendChild(b2);
+    const b3 = el('button', 'choice'); ch.appendChild(b3);
+    const b4 = el('a', 'choice'); b4.href = 'design.html'; b4.target = '_blank'; b4.rel = 'noopener'; ch.appendChild(b4);
     root.appendChild(card);
+    let code = document.documentElement.lang || 'en';
+    const paint = (flip) => {
+      const C = window.CONTENTS[code] || window.CONTENTS.en;
+      const U = C.ui;
+      [sub, txt, b1, b2, b3, b4].forEach((x) => { if (flip) { x.classList.remove('flip'); void x.offsetWidth; x.classList.add('flip'); } });
+      sub.textContent = U.subtitle;
+      txt.innerHTML = '';
+      paragraphs(C.scenes.title.text).forEach((p) => txt.appendChild(el('p', null, p)));
+      b1.textContent = U.start;
+      b2.textContent = U.howto; b2.onclick = () => { setLang(code); show('howto'); };
+      b3.textContent = `${U.endings} (${unlocked().length}/${Object.keys(C.endings).length})`; b3.onclick = () => { setLang(code); show('gallery'); };
+      b4.textContent = U.design;
+    };
+    paint(false);
+    if (!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+      titleTimer = setInterval(() => {
+        if (!card.isConnected || S.scene !== 'title') { clearInterval(titleTimer); titleTimer = null; return; }
+        code = LANGS[(LANGS.indexOf(code) + 1) % LANGS.length];
+        paint(true);
+      }, 4500);
+    }
     renderStatus();
     renderPhone();
   }
