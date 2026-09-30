@@ -296,8 +296,8 @@ const Game = (() => {
 
   // an option the player can no longer take. The two reasons are fixed phrases, never explained.
   function gateOf(c) {
-    if (c.nerveMax != null && S.nerves > c.nerveMax) return CONTENT.ui.gateNerves;
-    if (c.dreadMax != null && S.dread > c.dreadMax) return CONTENT.ui.gateDread;
+    if (c.nerveMax != null && S.nerves > c.nerveMax) return c.whyNot || CONTENT.ui.gateNerves;
+    if (c.dreadMax != null && S.dread > c.dreadMax) return c.whyNot || CONTENT.ui.gateDread;
     return null;
   }
 
