@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DIVERTED — a hospitality horror</title>
+<meta name="description" content="Your flight from London to Los Angeles has landed in Reykjavík instead. Nobody will tell you why. A text-based horror game.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app" class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-title">DIVERTED</span>
+      <span class="brand-sub">Albion Atlantic · AB 0271 · LHR → LAX</span>
+    </div>
+    <div class="status" id="status" aria-live="polite">
+      <div class="clock"><span class="clock-day" id="clock-day">—</span><span class="clock-time" id="clock-time">—:—</span></div>
+      <div class="meter" title="Nerves.">
+        <span class="meter-label">NERVES</span>
+        <span class="meter-track"><span class="meter-fill nerves" id="nerves-fill"></span></span>
+      </div>
+      <div class="meter" title="Dread.">
+        <span class="meter-label">DREAD</span>
+        <span class="meter-track dread-track"><span class="meter-fill dread" id="dread-fill"></span></span>
+      </div>
+      <div class="pips" id="strikes" title="Complaints the airline has noted.">
+        <span class="pips-label">NOTED</span><span class="pip"></span><span class="pip"></span><span class="pip"></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="scene" id="scene">
+    <!-- rendered by engine.js -->
+  </main>
+
+  <aside class="phone" id="phone" aria-label="Your phone">
+    <div class="phone-top">
+      <span class="phone-sig">▮▮▯▯ · 4G</span>
+      <span class="phone-time" id="phone-time">—:—</span>
+      <span class="phone-batt">31%</span>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab" data-tab="email">Mail<span class="badge" id="badge-email"></span></button>
+      <button class="tab" data-tab="chat">Ally<span class="badge" id="badge-chat"></span></button>
+      <button class="tab" data-tab="sms">SMS<span class="badge" id="badge-sms"></span></button>
+      <button class="tab" data-tab="paper">Paper<span class="badge" id="badge-paper"></span></button>
+    </nav>
+    <div class="phone-body" id="phone-body"></div>
+  </aside>
+
+  <button class="phone-toggle" id="phone-toggle" aria-label="Open phone">PHONE<span class="badge" id="badge-all"></span></button>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <div class="scanlines" aria-hidden="true"></div>
+  <div class="vignette-overlay" aria-hidden="true"></div>
+</div>
+
+<script src="art.js"></script>
+<script src="content.js"></script>
+<script src="content.fr.js"></script>
+<script src="content.fi.js"></script>
+<script src="engine.js"></script>
+</body>
+</html>
