@@ -16,10 +16,10 @@ const Game = (() => {
     loc: 'London Heathrow · Gate 12 · Boarding',
     text: 'A gate agent gets on the microphone. <em>Please board by lane.</em> Four lanes, four signs, and a queue that is already ignoring them. Albion Atlantic is proud to serve you in the language of your choice.\n\nUn agent prend le micro. <em>Veuillez embarquer par voie.</em> Quatre voies, quatre panneaux, et une file qui les ignore déjà. Albion Atlantic est fière de vous servir dans la langue de votre choix.\n\nPortin virkailija tarttuu mikrofoniin. <em>Siirtykää koneeseen kaistoittain.</em> Neljä kaistaa, neljä kylttiä ja jono, joka ei välitä niistä. Albion Atlantic palvelee teitä ylpeänä valitsemallanne kielellä.\n\nHliðvörður tekur hljóðnemann. <em>Vinsamlegast farið um borð eftir reinum.</em> Fjórar reinar, fjögur skilti, og biðröð sem er þegar farin að hunsa þau. Albion Atlantic er stolt af því að þjóna þér á því tungumáli sem þú kýst.',
     choices: [
-      { label: 'Lane A · English', sub: 'Please have your boarding pass ready.', do: (G) => G.lang('en'), time: 30, next: 'boarding' },
-      { label: 'Voie B · Français', sub: 'Veuillez préparer votre carte d\'embarquement.', do: (G) => G.lang('fr'), time: 30, next: 'boarding' },
-      { label: 'Rein C · Íslenska', sub: 'Hafið brottfararspjaldið tilbúið.', do: (G) => G.lang('is'), time: 30, next: 'boarding' },
-      { label: 'Kaista D · Suomi', sub: 'Pitäkää tarkastuskorttinne valmiina.', do: (G) => G.lang('fi'), time: 30, next: 'boarding' },
+      { label: 'Lane A · English', sub: 'Please have your boarding pass ready.', do: (G) => G.lang('en'), time: 30, next: 'door' },
+      { label: 'Voie B · Français', sub: 'Veuillez préparer votre carte d\'embarquement.', do: (G) => G.lang('fr'), time: 30, next: 'door' },
+      { label: 'Rein C · Íslenska', sub: 'Hafið brottfararspjaldið tilbúið.', do: (G) => G.lang('is'), time: 30, next: 'door' },
+      { label: 'Kaista D · Suomi', sub: 'Pitäkää tarkastuskorttinne valmiina.', do: (G) => G.lang('fi'), time: 30, next: 'door' },
     ],
   };
 
@@ -101,7 +101,7 @@ const Game = (() => {
     // scheduled message at absolute minute `at`; fx runs on delivery.
     at: (at, ch, m) => { S.sched.push(Object.assign({ at, ch }, m)); S.sched.sort((a, b) => a.at - b.at); },
     // bot-initiated chat line
-    bot: (text, dd) => { if (S.phoneDead) { S.backlog.push({ ch: 'chat', body: text, at: S.t, dd }); return; } S.chat.push({ who: 'bot', text, read: false, t: S.t, dd }); AUDIO.event('buzz'); toast(CONTENT.ui.tAlly + ' · ' + text.slice(0, 60) + (text.length > 60 ? '…' : '')); },
+    bot: (text, dd, key) => { if (S.phoneDead) { S.backlog.push({ ch: 'chat', body: text, at: S.t, dd, key }); return; } S.chat.push({ who: 'bot', text, read: false, t: S.t, dd, key }); AUDIO.event('buzz'); toast(CONTENT.ui.tAlly + ' · ' + text.slice(0, 60) + (text.length > 60 ? '…' : '')); },
     go: (id) => { pendingGo = id; },
     end: (id) => { pendingGo = 'end:' + id; },
     advance: (m) => advance(m),
@@ -139,12 +139,15 @@ const Game = (() => {
     charge: (pct) => {
       S.batt = Math.max(S.batt, pct); S.phoneDead = false;
       const n = S.backlog.length;
-      S.backlog.forEach((m) => { if (m.ch === 'chat') S.chat.push({ who: 'bot', text: m.body, read: false, t: m.at != null ? m.at : S.t, dd: m.dd }); else { const st = m.at != null ? m.at : m.stamp; deliver(Object.assign({}, m, { stamp: st }), true); } });
+      S.backlog.forEach((m) => { if (m.ch === 'chat') S.chat.push({ who: 'bot', text: m.body, read: false, t: m.at != null ? m.at : S.t, dd: m.dd, key: m.key }); else { const st = m.at != null ? m.at : m.stamp; deliver(Object.assign({}, m, { stamp: st }), true); } });
       S.backlog = [];
       if (n) { toast(CONTENT.ui.tFlood.replace('{n}', n)); AUDIO.event(n > 6 ? 'flood' : 'buzz'); }
       return n;
     },
-    openPhone: (tab) => { ui.tab = tab || ui.tab; ui.open = null; ui.phoneOpen = true; $('#phone').classList.add('open'); },
+    // what the player has actually read: messages carry a `key`; reading them sets read:<key>
+    readMsg: (k) => !!S.flags['read:' + k],
+    unread: () => (S.phoneDead ? 0 : ['email', 'chat', 'sms', 'paper'].reduce((a, c) => a + unreadCount(c), 0)),
+    openPhone: (tab) => { ui.tab = tab || ui.tab; ui.open = null; ui.phoneOpen = true; $('#phone').classList.add('open'); renderPhone(); },
     lang: (code) => setLang(code),
     get ui() { return CONTENT.ui; },
   };
@@ -158,7 +161,7 @@ const Game = (() => {
   }
 
   function deliver(m, force) {
-    if (S.phoneDead && !force) { S.backlog.push(m); return; }
+    if (S.phoneDead && !force && m.ch !== 'paper') { S.backlog.push(m); return; }   // paper is a thing you hold; it does not need a battery
     m.id = ++S.mid;
     m.arrived = S.t;
     if (m.stamp == null) m.stamp = S.t;
@@ -175,7 +178,7 @@ const Game = (() => {
     while (S.sched.length && S.sched[0].at <= target) {
       const m = S.sched.shift();
       S.t = Math.max(S.t, m.at);
-      if (m.ch === 'chat') { if (S.phoneDead) S.backlog.push(m); else { S.chat.push({ who: 'bot', text: m.body, read: false, t: S.t, dd: m.dd }); AUDIO.event('buzz'); toast(CONTENT.ui.tAlly + ' · ' + m.body.slice(0, 60)); } if (m.fx) m.fx(G); }
+      if (m.ch === 'chat') { if (S.phoneDead) S.backlog.push(m); else { S.chat.push({ who: 'bot', text: m.body, read: false, t: S.t, dd: m.dd, key: m.key }); AUDIO.event('buzz'); toast(CONTENT.ui.tAlly + ' · ' + m.body.slice(0, 60)); } if (m.fx) m.fx(G); }
       else deliver(m);
     }
     // the phone runs down: one point every 30 minutes, every 12 in the small hours
@@ -291,12 +294,25 @@ const Game = (() => {
 
     if (sc.art) { const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); root.appendChild(cv); ART.scene(cv, sc.art, G); AUDIO.scene(sc.art, G.D, G.N); }
     if (sc.loc) root.appendChild(el('div', 'loc', esc(typeof sc.loc === 'function' ? sc.loc(G) : sc.loc)));
-    const txt = el('div', 'text');
-    paragraphs(sc.text).forEach((p) => txt.appendChild(el('p', null, p)));
-    root.appendChild(txt);
+    root.appendChild(buildText(sc));
 
     if (sc.buses) renderBuses(root, sc);
 
+    root.appendChild(buildChoices(sc));
+
+    if (sc.status) root.appendChild(el('div', 'status-line', typeof sc.status === 'function' ? sc.status(G) : sc.status));
+
+    renderStatus();
+    renderPhone();
+    window.scrollTo({ top: 0 });
+  }
+
+  function buildText(sc) {
+    const txt = el('div', 'text');
+    paragraphs(sc.text).forEach((p) => txt.appendChild(el('p', null, p)));
+    return txt;
+  }
+  function buildChoices(sc) {
     const choices = (typeof sc.choices === 'function' ? sc.choices(G) : sc.choices) || [];
     const box = el('div', 'choices');
     choices.forEach((c) => {
@@ -311,19 +327,24 @@ const Game = (() => {
       else b.onclick = () => choose(c);
       box.appendChild(b);
     });
-    root.appendChild(box);
-
-    if (sc.status) root.appendChild(el('div', 'status-line', typeof sc.status === 'function' ? sc.status(G) : sc.status));
-
-    renderStatus();
-    renderPhone();
-    window.scrollTo({ top: 0 });
+    return box;
+  }
+  // reading something on the phone can open or close options in the room: redraw text and choices in place, without scrolling
+  function softRender() {
+    if (!S || !S.scene || S.scene === 'lane' || S.scene.startsWith('end:')) return;
+    const sc = CONTENT.scenes[S.scene];
+    if (!sc || sc.type) return;
+    const root = $('#scene');
+    const t = root.querySelector('.text'), c = root.querySelector('.choices');
+    if (t) t.replaceWith(buildText(sc));
+    if (c) c.replaceWith(buildChoices(sc));
   }
 
   // an option the player can no longer take. The two reasons are fixed phrases, never explained.
   function gateOf(c) {
     if (c.nerveMax != null && S.nerves > c.nerveMax) return c.whyNot || CONTENT.ui.gateNerves;
-    if (c.dreadMax != null && S.dread > c.dreadMax) return c.whyNot || CONTENT.ui.gateDread;
+    // an option that disobeys an instruction (`instr`: the key of the message that gave it) is only closed by dread once that message has been read
+    if (c.dreadMax != null && S.dread > c.dreadMax && (!c.instr || S.flags['read:' + c.instr])) return c.whyNot || CONTENT.ui.gateDread;
     return null;
   }
 
@@ -461,8 +482,10 @@ const Game = (() => {
     return S.inbox.filter((m) => m.ch === ch && !m.read).length;
   }
 
-  // a message can carry a dread cost that is only paid when it is read
-  function costOf(m) { if (m.dd && !m.costed) { m.costed = true; G.dread(m.dd); renderStatus(); } }
+  // a message can carry a dread cost that is only paid when it is read, and a key that records that it was
+  function costOf(m) { let changed = false; if (m.key && !S.flags['read:' + m.key]) { S.flags['read:' + m.key] = true; changed = true; } if (m.dd && !m.costed) { m.costed = true; G.dread(m.dd); renderStatus(); changed = true; } if (changed) softRenderSoon(); }
+  let softTimer = null;
+  function softRenderSoon() { if (softTimer) return; softTimer = setTimeout(() => { softTimer = null; softRender(); }, 0); }
 
   function renderPhone() {
     ['email', 'chat', 'sms', 'paper'].forEach((ch) => {

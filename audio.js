@@ -14,7 +14,7 @@
 const AUDIO = (() => {
   const LS = 'diverted.mute';
   let ctx = null, master = null, current = null, currentKey = null, dreadBus = null, dreadOsc = null, whine = null;
-  let nervesBus = null, nervesTier = 0, heartTimer = null;
+  let nervesBus = null, nervesTier = 0, heartTimer = null, clangTimer = null, hall = null, dreadTier = 0;
   let muted = false, started = false, pendingKey = null, pendingDread = 0, pendingNerves = 0;
   try { muted = localStorage.getItem(LS) === '1'; } catch (e) { /* ignore */ }
 
@@ -103,6 +103,7 @@ const AUDIO = (() => {
 
   /* ---------------------------------------------------------- dread underneath */
   function setDread(tier) {
+    dreadTier = tier;
     if (!ctx) return;
     const t = ctx.currentTime;
     const target = tier <= 1 ? 0 : 0.02 + (tier - 1) * 0.022;
@@ -124,6 +125,71 @@ const AUDIO = (() => {
     nervesBus.gain.cancelScheduledValues(t); nervesBus.gain.setValueAtTime(nervesBus.gain.value, t);
     nervesBus.gain.linearRampToValueAtTime(tier <= 1 ? 0 : 1, t + 1.5);
   }
+  // A metal bar on a rail. Not a bell: a hit. A burst of bright noise with a hard edge, a short
+  // metallic ring from a very short feedback comb (the rail), a low knock from the bar, all of it
+  // clipped a little. At the top of the nerves range these come irregularly; at the very top they
+  // come in angry runs, as if somebody downstairs were hammering at something that will not give.
+  let rail = null, crush = null;
+  function clang(when, vol = 0.12) {
+    // the hit: two noise bursts, one bright and short, one with a bit of body
+    burst(when, 0.025, 5200 + Math.random() * 2500, 2.5, vol * 1.6, crush);
+    burst(when + 0.004, 0.09, 1900 + Math.random() * 900, 1.2, vol * 0.9, crush);
+    // the bar: a low, dead knock
+    thud(when, 95 + Math.random() * 40, 0.12, vol * 1.1, crush);
+    // the rail: a few inharmonic partials, high, that ring briefly and die unevenly
+    const base = 1100 + Math.random() * 900;
+    [1, 1.47, 2.09, 3.3].forEach((r, k) => {
+      const o = osc('sine', base * r), g = gain(0); o.connect(g); g.connect(rail);
+      const dur = 0.25 + Math.random() * 0.45 - k * 0.05;
+      g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(vol * 0.35 / (1 + k), when + 0.003); g.gain.exponentialRampToValueAtTime(0.0005, when + Math.max(0.12, dur));
+      o.start(when); o.stop(when + Math.max(0.12, dur) + 0.05);
+    });
+  }
+  function clangs() {
+    const tier = nervesTier;
+    if (ctx && tier >= 3) {
+      const t = ctx.currentTime;
+      const v = tier >= 4 ? 0.11 : 0.07;
+      clang(t, v);
+      if (Math.random() < (tier >= 4 ? 0.5 : 0.25)) clang(t + 0.09 + Math.random() * 0.12, v * 0.8);               // the bar bounces
+      if (tier >= 4 && Math.random() < 0.35) { const n = 3 + ((Math.random() * 4) | 0); let d = 0.5; for (let k = 0; k < n; k++) { d += 0.16 + Math.random() * 0.14; clang(t + d, v * (0.7 + Math.random() * 0.4)); } }   // hammering
+    }
+    const next = tier >= 4 ? 4000 + Math.random() * 9000 : tier >= 3 ? 8000 + Math.random() * 20000 : 6000;
+    clangTimer = setTimeout(clangs, next);
+  }
+
+  // Bells, for the top of the dread range: far off, slow, wrong. Each is a cluster of detuned
+  // inharmonic partials with a soft attack and a very long decay, through the hall, with a slow
+  // tremolo on the body so it seems to turn as it rings. They are tuned to each other — a low D,
+  // its tritone, the minor second above — so that two ringing together make a chord nobody would
+  // choose, and over the drone and the heartbeat they add up to something like music.
+  let bellTimer = null;
+  const BELL_NOTES = [73.4, 103.8, 77.8, 146.8, 155.6, 207.7];   // D2, Ab2, Eb2, D3, Eb3, Ab3
+  function bell(when, freq, vol = 0.05, dur = 6) {
+    const partials = [1, 2.0, 2.4, 3.0, 4.2, 5.4, 6.8];
+    partials.forEach((r, k) => {
+      const o = osc(k < 2 ? 'sine' : 'triangle', freq * r * (1 + (Math.random() - 0.5) * 0.006)), g = gain(0); o.connect(g); g.connect(hall);
+      const v = vol / (1 + k * 1.3), d = dur * (1 - k * 0.1);
+      g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(v, when + 0.03 + k * 0.01); g.gain.exponentialRampToValueAtTime(0.0003, when + d);
+      lfo(0.9 + Math.random() * 0.8, v * 0.35, g.gain);
+      o.start(when); o.stop(when + d + 0.2);
+    });
+    burst(when, 0.06, 2400, 1.5, vol * 0.5, hall, 'brown');   // the clapper
+  }
+  function bells() {
+    const tier = dreadTier;
+    if (ctx && tier >= 4) {
+      const t = ctx.currentTime;
+      const v = tier >= 6 ? 0.07 : tier >= 5 ? 0.055 : 0.04;
+      const n1 = BELL_NOTES[(Math.random() * BELL_NOTES.length) | 0];
+      bell(t, n1, v, 6 + Math.random() * 4);
+      if (tier >= 5 && Math.random() < 0.6) { const n2 = BELL_NOTES[(Math.random() * BELL_NOTES.length) | 0]; bell(t + 1.2 + Math.random() * 2.5, n2, v * 0.8, 7); }   // a second, against the first
+      if (tier >= 6 && Math.random() < 0.4) bell(t + 5 + Math.random() * 3, 36.7, v * 1.2, 12);   // and under both, a D one octave down, almost too low to be a note
+    }
+    const next = tier >= 6 ? 7000 + Math.random() * 9000 : tier >= 5 ? 12000 + Math.random() * 16000 : tier >= 4 ? 20000 + Math.random() * 30000 : 8000;
+    bellTimer = setTimeout(bells, next);
+  }
+
   function heartbeat() {
     if (!ctx) return;
     const tier = nervesTier;
@@ -147,13 +213,25 @@ const AUDIO = (() => {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
-    master = gain(muted ? 0 : 0.9); master.connect(ctx.destination);
+    master = gain(muted ? 0 : 0.9);
+    // a limiter on the way out, so the hits and the bells can be loud without the whole mix clipping
+    const lim = ctx.createDynamicsCompressor(); lim.threshold.value = -14; lim.knee.value = 6; lim.ratio.value = 10; lim.attack.value = 0.002; lim.release.value = 0.18;
+    master.connect(lim); lim.connect(ctx.destination);
     dreadBus = gain(0); dreadBus.connect(master);
     dreadOsc = osc('sine', 40); dreadOsc.connect(dreadBus); dreadOsc.start();
     const d2 = osc('sine', 40.7); const g2 = gain(0.5); d2.connect(g2); g2.connect(dreadBus); d2.start();
     whine = gain(0); const w = osc('sine', 9000); w.connect(whine); whine.connect(master); w.start();
     nervesBus = gain(0); const lp = filter('lowpass', 900, 0.7); nervesBus.connect(lp); lp.connect(master);
-    heartbeat();
+    // the hall the clangs ring in: a short feedback delay, darkened each pass
+    hall = gain(1); const dl = ctx.createDelay(1.0); dl.delayTime.value = 0.23; const fb = gain(0.38); const dark = filter('lowpass', 1800, 0.5);
+    hall.connect(master); hall.connect(dl); dl.connect(dark); dark.connect(fb); fb.connect(dl); fb.connect(master);
+    // the rail: a 3 ms comb with feedback, which turns a noise burst into something with a metal in it
+    rail = gain(1); const cd = ctx.createDelay(0.05); cd.delayTime.value = 0.0031; const cfb = gain(0.62); const chp = filter('highpass', 900, 0.7);
+    rail.connect(cd); cd.connect(chp); chp.connect(cfb); cfb.connect(cd); cfb.connect(hall); rail.connect(hall);
+    // the crusher: a soft clip so the hits have an edge, then into the rail
+    crush = ctx.createWaveShaper(); const curve = new Float32Array(256); for (let k = 0; k < 256; k++) { const x = (k / 127.5) - 1; curve[k] = Math.tanh(x * 2.6) / Math.tanh(2.6); } crush.curve = curve; crush.oversample = '2x';
+    crush.connect(rail);
+    heartbeat(); clangs(); bells();
     started = true;
     if (pendingKey) scene(pendingKey, pendingDread, pendingNerves);
   }
@@ -179,6 +257,8 @@ const AUDIO = (() => {
     if (name === 'end') { thud(t, 70, 0.9, 0.35); tone(t + 0.1, 55, 2.5, 0.06); }
     if (name === 'good') { tone(t, 660, 0.4, 0.06); tone(t + 0.4, 880, 0.6, 0.06); }
     if (name === 'noted') { tone(t, 220, 0.12, 0.08, null, 'square'); }
+    if (name === 'clang') { clang(t, 0.12); }
+    if (name === 'bell') { bell(t, 73.4, 0.06, 7); }
     if (name === 'dead') { const o = osc('sine', 1800), g = gain(0); o.connect(g); g.connect(master); g.gain.setValueAtTime(0.06, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.9); o.frequency.setValueAtTime(1800, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.9); o.start(t); o.stop(t + 1); burst(t + 1.0, 0.02, 1200, 6, 0.08); }
     if (name === 'flood') { for (let i = 0; i < 14; i++) { const d = i * 0.11 + Math.random() * 0.03; burst(t + d, 0.05, 180, 2, 0.1, null, 'brown'); if (i % 3 === 0) tone(t + d, 830, 0.2, 0.03); } }
   }
@@ -195,5 +275,5 @@ const AUDIO = (() => {
   document.addEventListener('pointerdown', kick, { passive: true });
   document.addEventListener('keydown', kick);
 
-  return { scene, event, toggle, isMuted, start, tiers: () => ({ nerves: nervesTier, started }) };
+  return { scene, event, toggle, isMuted, start, tiers: () => ({ nerves: nervesTier, dread: dreadTier, started }) };
 })();

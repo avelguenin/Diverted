@@ -80,7 +80,7 @@ function mulberry(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = 
   // a careful human route (English labels)
   async function careful() {
     await page.evaluate(() => { Game.newRun(); Game.setLang('en'); });
-    const seq = ['Lane A', 'Say hello to 31C', 'Look out of the window at London', 'Order a coffee', 'Ask 31C if he saw', 'Ask a flight attendant', 'Look around', '“I don\'t think', 'Count the rows', 'Ask 31C', 'Find a human', 'Thank her', 'Talk to the man in the fleece', 'Talk to the woman with the toddler', 'Find the man from 31C', 'Go where the fleece'];
+    const seq = ['Lane A', 'Check your phone first', '“31B.”', 'Say hello to 31C', 'Look out of the window at London', 'Order a coffee', 'Ask 31C if he saw', 'Ask a flight attendant', 'Look around', '“I don\'t think', 'Count the rows', 'Ask 31C', 'Find a human', 'Thank her', 'Talk to the man in the fleece', 'Talk to the woman with the toddler', 'Find the man from 31C', 'Go where the fleece'];
     let gated = 0; const gl = [];
     const step = async (label) => { let s = await snapshot(); if (s.scene === 'phone_dies') { await clickChoice('Put it face down'); s = await snapshot(); } const g = s.choices.filter((c) => c.gated); gated += g.length; g.forEach((c) => gl.push(s.scene + ':' + c.label.slice(0, 30))); if (!s.choices.some((c) => c.label.includes(label.replace(/\.$/, '')))) return; await clickChoice(label); };
     for (const l of seq) await step(l);

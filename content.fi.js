@@ -27,7 +27,10 @@ CONTENTS.fi = (() => {
   const atLeast = (G, v) => { if (G.S.dread < v) G.S.dread = v; }; // v in percent
   // the chatbot is called Ally, but the narration only calls it that once the player has opened it
   const ALLY = (G) => (G.S.chat.some((m) => m.who === 'bot' && m.read) ? 'Ally' : 'lentoyhtiön chattibotti');
-  const hub = (G, status, key, extra) => p(status, G.last(), G.amb(key, AMB[key]), extra);
+  const ALLY_MSG = (G) => (G.S.chat.some((m) => m.who === 'bot' && m.read) ? 'Viesti Allylta.' : 'Viesti lentoyhtiön chattibotilta.');
+  // hubs end with a nudge when the phone has something unread: what it is, the game never says here
+  const NUDGE = (G) => (G.unread() > 0 ? W(G.unread() === 1 ? 'Puhelimessasi on jotain, mitä et ole lukenut.' : 'Puhelimessasi on asioita, joita et ole lukenut.') : '');
+  const hub = (G, status, key, extra) => p(status, G.last(), G.amb(key, AMB[key]), extra, NUDGE(G));
   const KNOCK_AT = T(1, 4, 30);
 
   const start = { scene: 'lane', t: T(0, 19, 20), nerves: 18, dread: 8, dep: T(1, 15, 10) };
@@ -65,7 +68,7 @@ CONTENTS.fi = (() => {
     ],
     corridor: [
       { d: 2, t: 'Mustelman värinen kokolattiamatto. Käytävän päähän jätetty pyyhekärry, hylätty kesken työvuoron.' },
-      { d: 2, t: 'Jokaisessa ovessa on numero. Jokaisen numeron alla on valojuova.' },
+      { d: 2, t: 'Jokaisessa ovessa on numero. Jokaisen numeron alla pimeä juova. Sinun numerosi alla valojuova.' },
       { d: 3, t: 'Jääpalakone jauhaa, pysähtyy, jauhaa.' },
       { d: 3, t: 'Käytävän päässä valo on sammunut. Äsken se paloi.' },
       { d: 3, t: 'Jonkin oven takana joku nauraa ja vaikenee kesken kaiken.' },
@@ -95,7 +98,7 @@ CONTENTS.fi = (() => {
       { d: 3, t: 'Bussin muotoinen pimeä hahmo parkkipaikan perällä, moottori sammuksissa. Tai käynnissä.' },
       { d: 4, t: 'Parkkipaikan perällä olevassa bussissa palavat sisävalot. Jokaisella paikalla istuu joku.' },
       { d: 4, t: 'Joku seisoo bussin oven vieressä hyvin suorana, kädet ristissä edessään.' },
-      { d: 5, t: 'Hän katsoo hotellia. Yhtä ikkunaa. Tiedät kyllä, mitä.' },
+      { d: 5, t: 'Bussin ovella seisova mies katsoo hotellia. Yhtä ikkunaa. Tiedät kyllä, mitä.' },
     ],
     morning: [
       { d: 2, t: 'Aamiaista korjataan pois. Sitä ei oikeastaan koskaan tarjoiltukaan.' },
@@ -179,6 +182,7 @@ CONTENTS.fi = (() => {
       'Yhdeksän tuntia ilman välilaskuja, kotona ennen keskiyötä Tyynenmeren aikaa. Joit sen ylimääräisen kahvin. Teit kaiken oikein.',
       'Tämä on peli siitä, millaista on, kun sinulle kerrotaan hyvin kohteliaasti, että kaikki on kunnossa.',
       W('Innoituksena on toiminut tosielämän keskusteluketju eräästä uudelleenreititetystä lennosta. Pelin lentoyhtiö on kuvitteellinen. Bussit eivät.'),
+      W('Pelaa mieluiten kuulokkeilla, äänet päällä.'),
     ),
   };
 
@@ -201,20 +205,42 @@ CONTENTS.fi = (() => {
      Boarding, the seat, the demonstration, the meal, the dark hours. Nothing
      goes wrong here. That is what it is for: four hours of a cabin working
      exactly as it should, with one man in it counting. */
+  scenes.door = {
+    art: 'gate',
+    loc: 'Lontoo Heathrow · Matkustajasilta · koneen ovi',
+    enter: (G) => {
+      if (G.once('welcome_mail')) {
+        G.msg('sms', { from: 'AlbionATL', key: 'seat', body: 'AB0271: Sinun boarding pass. Istuin 31B. Ryhmä 4. Älä vastaa.' });
+        G.msg('email', { from: 'Albion Atlantic', subj: 'Tervetuloa aboard AB 0271', key: 'welcome', body: 'Rakas Asiakas,\n\nTervetuloa aboard Albion Atlantic lento AB 0271 Los Angeles. Sinun lento on ajassa.\n\nSinun istuin: 31B. Sinun boarding ryhmä: 4.\n\nMeidän matkustamo staff on täällä varmistamaan sinun turvallisuus ja mukavuus. Turvallisuus meidän asiakkaiden on tantamount.\n\nArvostettuna asiakkaana sinut on kutsuttu hyväksymään ilmainen upgrade Business Class tälle lennolle. Business Class asiakkaat nauttivat hiljaisempi matkustamo ja heihin luotetaan löytämään oma tie.\n\nNauti sinun lento.', actions: [{ label: 'Hyväksy ilmainen upgrade', if: (G) => !G.has('business') && !G.has('at_hotel'), do: (G) => { G.flag('business'); G.nerves(-2); G.dread(4); G.note('Hyväksyit korotuksen. Istuimesi ei muuttunut mitenkään. Lentoemäntä toi lämpimän pyyhkeen, ja ohi kulkeva purseri sanoi ' + V('"Business",') + ' itsekseen, ja teki pienen merkinnän.'); } }] });
+      }
+    },
+    text: (G) => p(
+      G.last(),
+      'Matkustajasillassa tuoksuu kerosiini ja kokolattiamatto. Koneen ovella purseri: pitkä, ohimoilta harmaantunut, hymy silitetty samalla kertaa kuin paita. Hän ei katso tarkastuskortteja. Hän katsoo kasvoja, yksi kerrallaan, ja kysyy jokaiselta kysymyksen, ja painaa vastauksen mieleensä.',
+      'Puhelimesi värähti kahdesti matkalla siltaa alas. Et ole katsonut.',
+      V('"Tervetuloa kyydissä. Istuin?"'),
+      'Et tiedä istuinpaikkaasi. Se on puhelimessasi, kaiken muun kanssa.',
+    ),
+    choices: (G) => [
+      { label: '"31B."', if: (G) => G.readMsg('seat') || G.readMsg('welcome'), nd: -2, time: 2, do: (G) => G.note(V('"31B. Kiitos sinulle."') + ' Hän sanoi sen kuin olisi arkistoinut sen. Hän katsoi seuraavia kasvoja.'), next: 'boarding' },
+      { label: '"Kolmekymmentä-jotain. Löydän sen kyllä."', kind: 'conflict', nd: 3, dd: 1, time: 3, do: (G) => { G.flag('seat_vague'); G.note(V('"31B",') + ' hän sanoi katsomatta mihinkään. ' + V('"Kolmekymmentäyksi B. Me pidämme että meidän asiakkaat tietävät missä he ovat."') + ' Hän teki pienen merkinnän kädessään olevaan korttiin ja katsoi seuraavia kasvoja.'); }, next: 'boarding' },
+      { label: '"Bisnesluokka."', kind: 'comply', if: (G) => G.has('business'), dd: 2, time: 2, do: (G) => G.note(V('"Tietenkin",') + ' hän sanoi, eikä väistänyt tieltä hetkeä pidempään kuin hetken, ja sitten väisti. ' + V('"31B. Nauti sinun lento."')), next: 'boarding' },
+      { label: 'Katso ensin puhelimesta.', sub: 'Sähköposti. Tekstiviesti. Jommassakummassa se on.', time: 1, do: (G) => { G.openPhone(G.S.inbox.some((m) => m.ch === 'sms' && !m.read) ? 'sms' : 'email'); G.note('Jono hengittää takanasi. Hän odottaa. Hän on hyvin hyvä odottamaan.'); }, next: 'door' },
+    ],
+  };
+
   scenes.boarding = {
     art: 'gate',
     loc: 'Lontoo Heathrow · Matkustajasilta · Paikka 31B',
-    enter: (G) => { if (G.once('welcome_mail')) G.msg('email', { from: 'Albion Atlantic', subj: 'Tervetuloa aboard AB 0271', body: 'Rakas Asiakas,\n\nTervetuloa aboard Albion Atlantic lento AB 0271 Los Angeles. Sinun lento on ajassa.\n\nMeidän matkustamo staff on täällä varmistamaan sinun turvallisuus ja mukavuus. Turvallisuus meidän asiakkaiden on tantamount.\n\nArvostettuna asiakkaana sinut on kutsuttu hyväksymään ilmainen upgrade Business Class tälle lennolle. Business Class asiakkaat nauttivat hiljaisempi matkustamo ja heihin luotetaan löytämään oma tie.\n\nNauti sinun lento.', actions: [{ label: 'Hyväksy ilmainen upgrade', if: (G) => !G.has('business') && !G.has('at_hotel'), do: (G) => { G.flag('business'); G.nerves(-2); G.dread(4); G.note('Hyväksyit korotuksen. Istuimesi ei muuttunut mitenkään. Lentoemäntä toi lämpimän pyyhkeen, ja ohi kulkeva purseri sanoi ' + V('"Business",') + ' itsekseen, ja teki pienen merkinnän.'); } }] }); },
     text: (G) => p(
       G.last(),
-      'Matkustajasillassa tuoksuu kerosiini ja kokolattiamatto. Koneen ovella purseri: pitkä, ohimoilta harmaantunut, hymy silitetty samalla kertaa kuin paita. Hän ei katso tarkastuskortteja. Hän katsoo kasvoja, yksi kerrallaan, ja sanoo ' + V('"Tervetuloa kyydissä"') + ' jokaiselle heistä, ikään kuin hänen täytyisi painaa se mieleensä.',
       'Rivi 31. Käytäväpaikka, 31B. Paikalla 31C suunnilleen sinun ikäisesi mies ja pokkari, jota hän on jo lakannut lukemasta. Hän nyökkää. Sinä nyökkäät. Siinä koko keskustelu, eikä siihen tule lisää vähään aikaan.',
       'Jossain takanasi kaksivuotiaalle kerrotaan kärsivällisesti, että kone ei lähde vielä. Kone ei lähde vielä.',
     ),
     choices: [
       { label: 'Tervehdi 31C:tä.', nd: -1, dd: -1, time: 20, do: (G) => { G.flag('met31c'); G.note('Hän vastasi tervehdykseen. Hän on menossa kotiin. Hän sanoi sen niin kuin se sanotaan yhdeksän tunnin lennon alussa: kotiin, ikään kuin se olisi paikka, jonne kone varmasti pääsisi perille.'); }, next: 'takeoff' },
       { label: 'Nosta laukku hattuhyllylle, istuudu, kiinnitä turvavyö ennen kuin kukaan ehtii pyytää.', kind: 'comply', dd: 2, time: 20, do: (G) => G.note('Vyö kiinni. Laukku hyllyllä. Ohi kulkiessaan purseri vilkaisi sitä ja nyökkäsi tuskin havaittavasti – niin kuin nyökkää mies, joka pitää listaa.'), next: 'takeoff' },
-      { label: 'Kysy ovella seisovalta purserilta, onko lento aikataulussa.', nd: 1, time: 20, do: (G) => G.note(V('"Kaikki on ajassa",') + ' hän sanoi lämpimästi, ja sitten – ikään kuin perusteellisuuden nimissä – ' + V('"Kaiken."') + ' Hän katsoi edelleen perässäsi sisään tulevia matkustajia.'), next: 'takeoff' },
+      { label: 'Mene takaisin ja kysy ovella seisovalta purserilta, onko lento aikataulussa.', nd: 1, time: 20, do: (G) => G.note(V('"Kaikki on ajassa",') + ' hän sanoi lämpimästi, ja sitten – ikään kuin perusteellisuuden nimissä – ' + V('"Kaiken."') + ' Hän katsoi edelleen perässäsi sisään tulevia matkustajia.'), next: 'takeoff' },
       { label: 'Lue istuintaskun turvaohjekortti. Kunnolla, kerrankin.', nd: -2, time: 20, do: (G) => G.note('Suoja-asento. Lähimmät uloskäynnit, jotka saattavat olla takanasi. Pieni piirros ihmisestä, joka liukuu mereen tyyni ilme kasvoillaan. Panet kortin takaisin. Et ole koskaan ennen lukenut sellaista, etkä tiedä, miksi luit nyt.'), next: 'takeoff' },
     ],
   };
@@ -224,7 +250,7 @@ CONTENTS.fi = (() => {
     loc: 'Kiitotie 27L · Heathrow',
     text: p(
       'Purseri hoitaa turvaesittelyn itse, matkustamon etuosassa, kun video pyörii hänen takanaan äänettömänä. Hän tekee sen hitaasti. Hän tekee sen katsoen jokaista riviä vuorollaan, ikään kuin tarkistaisi, että uloskäynnit ovat siellä, missä kortti väittää.',
-      V('"Siinä epätodennäköisessä tapahtumassa. Siinä epätodennäköisessä tapahtumassa. Turvallisuus meidän asiakkaiden on tantamount."') + ' Se on outo lause turvaesittelyyn, ja hän sanoo sen kuin se olisi mitä tavallisin.',
+      V('"Siinä epätodennäköisessä tapahtumassa matkustamon paineen menetys. Siinä epätodennäköisessä tapahtumassa laskeutuminen vedelle. Siinä epätodennäköisessä tapahtumassa. Turvallisuus meidän asiakkaiden on tantamount."') + ' Se on outo lause turvaesittelyyn, ja hän sanoo sen kuin se olisi mitä tavallisin.',
       'Sitten moottorit, ja paine selkää vasten, ja Lontoo kallistuu pois oranssiin ja mustaan. Turvavyövalo palaa vielä pitkään sen jälkeen, kun sille olisi enää tarvetta.',
     ),
     choices: [
@@ -239,11 +265,11 @@ CONTENTS.fi = (() => {
     loc: 'Matkalento · Irlanninmeren yllä',
     text: (G) => p(
       G.last(),
-      'Illallinen tulee kärryllä, jota työntää kaksi lentoemäntää hymyillen kuin työkseen. Kanaa vai pastaa. Purseri seuraa kärryä muutaman rivin päässä; hän ei tarjoile, kävelee vain, katsoo tarjottimia, katsoo ihmisiä tarjottimien takana.',
+      'Illallinen tulee kärryllä, jota työntää kaksi lentoemäntää työhön kuuluva hymy kasvoillaan. Kanaa vai pastaa. Purseri seuraa kärryä muutaman rivin päässä; hän ei tarjoile, kävelee vain, katsoo tarjottimia, katsoo ihmisiä tarjottimien takana.',
       G.has('met31c') ? 'Paikan 31C mies otti pastan. Hän ei syö sitä. Hän katsoo selkänojan näytön karttaa, jolla pieni lentokone ei ole vielä päässyt Irlannin rannikolle.' : 'Paikan 31C mies otti pastan. Hän ei syö sitä. Hän ei ole sanonut sanaakaan.',
     ),
     choices: [
-      { label: 'Kanaa.', time: 40, nd: -2, do: (G) => G.note('Kana oli kanaa samaan tapaan kuin turvaohjekortin meri oli merta. Söit sen. Olit menossa kotiin; siellä söisit kunnolla.'), next: 'night' },
+      { label: 'Kanaa.', time: 40, nd: -2, do: (G) => G.note('Kana oli kanaa samaan tapaan kuin turvaohjekortin meri on merta. Söit sen. Olit menossa kotiin; siellä söisit kunnolla.'), next: 'night' },
       { label: 'Tilaa kahvi. Sitten toinen.', nd: 6, sub: 'Olet totuttamassa elimistöäsi Tyynenmeren aikaan, etkä aio antaa periksi.', time: 40, do: (G) => { G.flag('coffee'); G.nerves(-3); G.note('Kaksi kahvia. Lentokonekahvia, toisin sanoen lämmintä mielipidettä. Joit ne periaatteen vuoksi. Periaate oli Tyynenmeren aika, ja ohi kulkiessaan purseri katsoi toista kuppia hiukan pidempään kuin kuppi ansaitsee.'); }, next: 'night' },
       { label: 'Jätä illallinen väliin. Kallista selkänoja. Yritä nukkua jo nyt.', kind: 'comply', dd: -1, nd: -3, time: 40, do: (G) => G.note('Nukuit vähän, niin kuin lentokoneessa nukutaan: et niinkään nukkunut kuin olit pois päältä. Kun tulit pintaan, tarjottimet oli viety, matkustamon valot himmennetty, ja joku seisoi edessä käytävällä aivan liikkumatta.'), next: 'night' },
       { label: 'Kysy lentoemännältä kohteliaasti, onko purseri aina tällainen.', kind: 'conflict', nd: 4, dd: -2, time: 40, do: (G) => G.note('Hän naurahti kerran, ja sitten ei enää, ja katsoi käytävää pitkin sinne, missä purseri seisoi. ' + V('"Hän on erittäin thorough",') + ' hän sanoi ja antoi sinulle pastan, jota et ollut pyytänyt.'), next: 'night' },
@@ -263,7 +289,7 @@ CONTENTS.fi = (() => {
     choices: [
       { label: 'Nuku, tai yritä ainakin.', kind: 'comply', dd: -1, nd: -4, time: 40, do: (G) => G.note('Suljit silmäsi. Niiden takana käytävällä kävely jatkui. Jossain edempänä nainen sanoi ' + V('"Onko hän kunnossa?"') + ' ja joku sanoi ' + V('"Ole hyvä palaa sinun istuin",') + ' etkä sinä avannut silmiäsi, koska et ollut se, jolle puhuttiin. Vielä.'), next: 'cabin' },
       { label: 'Katso karttaa.', dd: 2, time: 40, do: (G) => G.note('Pieni lentokone liikkui niin hitaasti, että se näytti empivän. Sitten kartta ei hetkeen näyttänyt yhtään mitään, pelkkää sinistä, ja jäljellä oleva lentoaika pysyi lukemassa 5:12 pidempään kuin minuutti kestää.'), next: 'cabin' },
-      { label: 'Mene etuosan vessaan. Kävele verhon ohi.', whyNot: 'Ei hänen ohitseen.', dd: 4, nd: 2, dreadMax: 90, time: 40, do: (G) => { G.flag('saw_galley'); G.note('Verhon raosta: joku keittiön lattialla, lentoemäntä polvillaan vieressä, peitto, käsi. Et näe, mikä on vialla, eikä sinulle kerrota. Purseri seisoo heidän yllään kädet ristissä – katsomassa ei lattiaa vaan matkustamoa, raon läpi, ja siis sinua. ' + V('"Ole hyvä palaa sinun istuin",') + ' hän sanoi liikuttamatta mitään muuta kuin suutaan.'); }, next: 'cabin' },
+      { label: 'Mene etuosan vessaan. Kävele verhon ohi.', whyNot: 'Ei hänen ohitseen.', dd: 4, nd: 2, dreadMax: 90, time: 40, do: (G) => { G.flag('saw_galley'); G.note('Verhon raosta: joku keittiön lattialla, lentoemäntä polvillaan vieressä, peitto, käsi. Et näe, mikä on vialla, eikä sinulle kerrota. Purseri seisoo heidän yllään kädet ristissä – katsomassa ei lattiaa vaan matkustamoa, raon läpi, ja siis sinua. ' + V('"Ole hyvä palaa sinun istuin",') + ' hän sanoo liikuttamatta mitään muuta kuin suutaan.'); }, next: 'cabin' },
       { label: 'Kysy 31C:ltä, näkikö hän kortin.', nd: -1, dd: -2, time: 40, do: (G) => { G.flag('met31c'); G.note(V('"Pääluvun laskenta",') + ' hän sanoi. ' + V('"Se tehdään aina ennen kuin laskeudutaan jonnekin, minne ei ollut tarkoitus."') + ' Hän sanoi sen kuin vitsin. Kumpikaan teistä ei nauranut. Se oli ensimmäinen asia, jonka hän oli sanonut neljään tuntiin.'); }, next: 'cabin' },
     ],
   };
@@ -333,7 +359,7 @@ CONTENTS.fi = (() => {
       'Et ole koskaan ennen laskeutunut yöllä paikkaan, jossa kiitotie tuli näkyviin vasta, kun se oli jo allasi.',
     ),
     choices: [
-      { label: 'Katso ulos ikkunasta.', whyNot: 'Kaihdin alas, hän sanoi.', dd: 5, nd: 3, dreadMax: 90, time: 25, do: (G) => { G.nerves(3); G.note('Sinisiä valoja, sitten oransseja, sitten sinisiä. Ambulanssi ovet selällään märällä asfaltilla, ja sen vieressä – ei lähellä, vaan vieressä – tummansiniseen univormuun pukeutunut mies, hyvin suorassa. Ääni käytävältä, aivan korvasi juuresta: ' + V('"Blind alas, ole hyvä."')); }, next: 'ground' },
+      { label: 'Katso ulos ikkunasta.', whyNot: 'Ei hänen seistessään käytävällä.', dd: 5, nd: 3, dreadMax: 90, time: 25, do: (G) => { G.nerves(3); G.note('Sinisiä valoja, sitten oransseja, sitten sinisiä. Ambulanssi ovet selällään märällä asfaltilla, ja sen vieressä – ei lähellä, vaan vieressä – tummansiniseen univormuun pukeutunut mies, hyvin suorassa. Ääni käytävältä, aivan korvasi juuresta: ' + V('"Blind alas, ole hyvä."')); }, next: 'ground' },
       { label: 'Pidä katseesi selkänojan näytön kartassa.', kind: 'comply', dd: 4, time: 25, do: (G) => G.note('Pikkuinen kone ylitti kartan reunan, eikä sitä hetkeen ollut millään kartalla. Sitten näyttö pimeni ja näytti sinulle omat kasvosi.'), next: 'ground' },
       { label: 'Laske rivit lähimmälle uloskäynnille. Kahdesti.', nd: -2, time: 25, do: (G) => { G.nerves(-2); G.note('Kuusi riviä. Kuusi riviä. Sellaisesta tiedosta on hyötyä vain, jos jotain tapahtuu, ja olet alkanut toivoa, että jotain tapahtuisi.'); }, next: 'ground' },
     ],
@@ -363,7 +389,7 @@ CONTENTS.fi = (() => {
       atLeast(G, 30);
       if (G.once('landing_msgs')) {
         G.msg('email', {
-          from: 'Albion Atlantic Customer Care', subj: 'Sinun yön yli accommodation',
+          from: 'Albion Atlantic Customer Care', subj: 'Sinun yön yli accommodation', key: 'accommodation',
           body: `Rakas Asiakas,\n\nJohtuen operationaalinen diversion, sinun lento AB 0271 on viivästynyt yön yli. Me olemme järjestäneet accommodation sinulle.\n\nOle hyvä käytä linkki alla vahvistaaksesi sinun huone:\n\n<a href="#" onclick="return false">Heathrow Renaissance Lodge — Bath Road, Hounslow TW6</a>\n\nKuljetus sinun accommodation tullaan tarjoamaan.\n\nMe pahoittelemme kaikki epämukavuus. Me teemme meidän parasta.`,
           actions: [{ label: 'Avaa booking sivu', if: (G) => !G.has('at_hotel') && !G.has('booked'), next: 'heathrow' }],
         });
@@ -375,10 +401,9 @@ CONTENTS.fi = (() => {
       'Turvavyömerkki sammuu ilman kuulutusta. Se on se kuulutus. Terminaali on valaistu kuin jääkaapin sisus. Muutama sata teitä laahustaa koneesta sisään, ohi huomioliivimiehen, joka ei katso ketään.',
       G.has('objected') && W('Ulos mennessäsi purseri katsoi sinua hitusen liian pitkään.'),
       'Passintarkastus. Pitkä jono. Sitten miehistö kävelee sen ohi – koko miehistö, peräkanaa, vetolaukut samassa tahdissa, katsomatta oikealle eikä vasemmalle – ovesta, jossa lukee STAFF. Ovi ei niinkään sulkeudu heidän perässään kuin lakkaa olemasta ovi.',
-      'Jono katselee tätä vierestä. Kukaan ei sano mitään. Puhelimesi värähtää.',
+      'Jono katsoo, kun tämä tapahtuu. Kukaan ei sano mitään. Puhelimesi värähtää, ja sitten värähtää uudestaan: sähköposti, ja se chattijuttu. Mitä ikinä he haluavat sinun seuraavaksi tekevän, se on siellä.',
     ),
     choices: [
-      { label: 'Lue sähköposti. Avaa linkki.', kind: 'comply', dd: 8, sub: 'Majoitus. Vihdoin.', next: 'heathrow' },
       { label: 'Kirjoita chatbotille yhä hätäisemmin.', kind: 'comply', dd: 4, nd: 4, time: 10, do: (G) => { G.nerves(4); G.bot('Minä voin auttaa sen kanssa! Sinun lento AB 0271 on tällä hetkellä ajassa. Onko siellä jotain muuta? 😊'); G.note('Ally sanoo, että lento on aikataulussa. Katsot konetta ikkunasta. Sen valot on sammutettu.'); }, next: 'hall' },
       { label: 'Etsi joku ihminen. Ihan kuka tahansa.', whyNot: 'Kaikilla täällä on univormu.', dd: -4, dreadMax: 85, time: 10, next: 'icelander' },
       { label: 'Odota. Kyllä joku kohta kuuluttaa jotain.', kind: 'comply', dd: 8, sub: 'Aina joku kuuluttaa.', time: 20, next: 'wait1' },
@@ -403,7 +428,7 @@ CONTENTS.fi = (() => {
     art: 'stand',
     loc: 'Keflavík · Saapuvien edustalla',
     text: p(
-      'Auto on tosiaan paikalla. Musta, pitkä, tahraton, ovessa pieni kultainen vaakuna. Kuljettaja pitelee tablettia, jossa lukee nimesi – nimesi, oikein kirjoitettuna, mihin lentoyhtiö ei ole tähän mennessä pystynyt kertaakaan.',
+      'Auto on tosiaan paikalla. Musta, pitkä, tahraton, ovessa pieni kultainen vaakuna. Kuljettaja pitelee tablettia, jossa lukee nimesi – nimesi, oikein kirjoitettuna, mikä on enemmän kuin mihin lentoyhtiö on tähän mennessä pystynyt.',
       V('"Renaissance varten?"'),
       'Hän avaa takaoven. Lämmintä ilmaa. Nahkaa. Parkkipaikan takana tie katoaa pimeyteen, jolla ei näytä olevan loppua.',
     ),
@@ -504,7 +529,7 @@ CONTENTS.fi = (() => {
         name: G.pick(['Valkoinen bussi ilman minkäänlaisia tunnuksia', 'Luonnonvalkoinen bussi, jonka sivupeili on haljennut', 'Harmaa bussi, jonka ovesta irtoaa vuokraamon tarra']),
         sign: G.pick(['ALBION ATL → HOTEL', 'AB0271  HOTEL', 'FLIGHT PPL – HOTEL']), signStyle: 'paper',
         look: ['Huomioliivinen kuljettaja syö voileipää. Hän kohauttaa olkiaan, kun katsot häntä.', (G.has('bathroom') || G.t >= T(1, 2, 20)) ? 'Moottori käynnissä. Ovi alkaa sulkeutua.' : 'Moottori käynnissä. Ovi auki.'],
-        hidden: [(G.did('talk_fleece') ? 'Fleecemies istuu kolmannella rivillä.' : 'Kolmannella rivillä istuu fleecetakkinen mies, jonka tunnistat passintarkastuksesta.') + ' Taapero nukkuu jonkun sylissä.', 'Kaikilla kyydissä on yllään samat vaatteet kuin koneessa, ja se näkyy.'],
+        hidden: [(G.did('talk_fleece') ? 'Fleecemies istuu kolmannella rivillä.' : 'Kolmannella rivillä istuu fleecetakkinen mies, jonka tunnistat hallista.') + ' Taapero nukkuu jonkun sylissä.', 'Kaikilla kyydissä on yllään samat vaatteet kuin koneessa, ja se näkyy.'],
         boardLabel: (G.has('bathroom') || G.t >= T(1, 2, 20)) ? 'Juokse' : 'Nouse kyytiin',
         board: { time: 5, do: (G) => { if (G.has('bathroom') || G.t >= T(1, 2, 20)) G.nerves(6); G.flag('bus1_ok'); }, next: 'ride' },
       };
@@ -539,12 +564,12 @@ CONTENTS.fi = (() => {
     loc: 'Reykjavík · BSÍ-linja-autoasema',
     enter: (G) => {
       G.S.t = Math.max(G.t, T(1, 2, 50)); G.flag('detoured'); G.nerves(10); G.dread(6);
-      if (G.once('bsi_dead')) { G.S.batt = 0; G.S.phoneDead = true; G.S.deadAt = G.t; }
+      if (G.once('bsi_dead')) { G.S.bsiBatt = Math.max(1, G.S.batt); G.S.batt = 0; G.S.phoneDead = true; G.S.deadAt = G.t; G.flag('phone_scene'); }
     },
     text: (G) => p(
       'Neljänkymmenen minuutin ajon jälkeen reppureissaaja kysyy, missä hostellissa olet majoittunut, ja sinä ymmärrät.',
       'Bussi jättää sinut kaupungin linja-autoasemalle, joka haisee dieselille ja kanelille. Asema on sulkeutumassa. Kioski vetää rullaoveaan alas; reppureissaajat kävelevät jo pois, kohti sänkyjä, jotka ovat heidän omiaan.',
-      'Kaivat puhelimen esiin katsoaksesi, missä olet. Se näyttää 3 %, sitten kartan, sitten mustan ruudun, jossa ovat sinun kasvosi. Painat nappia. Painat uudestaan. Ei mitään. Kellonaika on mennyt sen mukana; asemalla on kello, ja kello on pysähtynyt.',
+      `Kaivat puhelimen esiin katsoaksesi, missä olet. Se näyttää ${G.S.bsiBatt || 1}%, sitten kartan, sitten mustan ruudun, jossa ovat sinun kasvosi. Painat nappia. Painat uudestaan. Ei mitään. Kellonaika on mennyt sen mukana; asemalla on kello, ja kello on pysähtynyt.`,
       'Ja perimmäisellä laiturilla, moottori käynnissä, sisävalot palamassa, jokainen istuin asemaan päin: tummansininen bussi, jonka kyljessä on kultainen vaakuna.',
     ),
     buses: (G) => [{
@@ -569,11 +594,13 @@ CONTENTS.fi = (() => {
     enter: (G) => { if (G.once('taxi_in')) G.note(p(G.last(), 'Taksi, lämmin, tuoksuu männyltä ja jonkun päivälliseltä. Kuljettaja on kuusissakymmenissä, radio soi hiljaa islanniksi, ehkä säätiedotusta, ja hän katsoo sinua peilistä tovin ennen kuin sanoo mitään. ' + V(LX('“Albion Atlantic?”')) + ' Et ole sanonut sanaakaan. ' + V(LX('“The clothes. Everybody off that flight looks like they slept in a chair. Where to?”')))); },
     text: (G) => p(G.last(), 'Mittari juoksee. Ulkona kaupunkia riittää kolmen kadun verran, ja sitten on pimeää.'),
     choices: (G) => [
-      { label: 'Näytä hänelle sähköposti. Heathrow Renaissance Lodge, Bath Road.', time: 3, once: 'taxi_mail', do: (G) => { G.nerves(-2); G.note(V(LX('“Heathrow.”')) + ' Hän lukee sen peilin kautta kahdesti ja nauraa, lyhyen naurun, joka ei kohdistu sinuun. ' + V(LX('“Every night somebody shows me this one. Every night it says Heathrow. I can take you to the airport and you can fly there, if you like. Otherwise it is not a very useful email.”')) + ' Hän ojentaa puhelimen takaisin varovasti, kuin se voisi tarttua.'); }, next: 'taxi' },
-      { label: 'Kysy häneltä, mitä hän tietää lennosta.', nd: -2, time: 5, once: 'taxi_week', do: (G) => { G.flag('driver_week'); G.collect(1); G.note(V(LX('“Your flight? I know your flight. Everybody who drives nights knows your flight.”')) + ' Hän laskee vapaan kätensä sormilla. ' + V(LX('“Monday it came in at one. Tuesday, one. Wednesday, Thursday, tonight. Same number, same hour, two hundred people with no coats. Every night the airline tells them a car is waiting outside. Every night I am outside, and I am not the car. Nobody from that company has rung me, or paid me, or anybody I know.”')) + ' Tauko, ja pyyhkijät. ' + V(LX('“The people, I take where they ask. The trouble is most of them don\'t know where to ask.”'))); }, next: 'taxi' },
+      { label: 'Näytä hänelle sähköposti. Se, jossa on se hotelli.', time: 3, once: 'taxi_mail', do: (G) => { G.nerves(G.readMsg('accommodation') ? -2 : 2); G.note(G.readMsg('accommodation')
+        ? 'Kaivat puhelimen esiin. Mustaa lasia, siinä omat kasvosi. Olit unohtanut. Mutta luit sen passintarkastuksessa, ja näet sen yhä puolittain edessäsi: Renaissance jotain. Bath Road. Hounslow. Sanot sen. ' + V(LX('“Heathrow.”')) + ' Hän nauraa, lyhyen naurun, joka ei kohdistu sinuun. ' + V(LX('“Every night somebody has that one. Every night it says Heathrow. The ones with that email, the white bus takes out past the lava, to Hraun. If that is where your people are, I can take you. It is not close, and it is not cheap.”'))
+        : 'Kaivat puhelimen esiin. Mustaa lasia, siinä omat kasvosi. Olit unohtanut. Kerrot hänelle, että tuli sähköposti, jossa oli hotelli, etkä koskaan avannut sitä, etkä muista siitä sanaakaan. Hän nyökkää kuin se olisi ihan tavallinen määrä.'); if (G.readMsg('accommodation')) { G.flag('mail_clue'); G.flag('driver_where'); } }, next: 'taxi' },
+      { label: 'Kysy häneltä, mitä hän tietää lennosta.', nd: -2, time: 5, once: 'taxi_week', do: (G) => { G.flag('driver_week'); G.collect(1); G.note(V(LX('“Your flight? I know your flight. Everybody who drives nights knows your flight.”')) + ' Hän laskee vapaan kätensä sormilla. ' + V(LX('“Monday it came in at one. Tuesday, one. Wednesday, Thursday, tonight. Same number, same hour, two hundred people with no coats. Every night the airline tells them a driver is waiting for them outside Arrivals. I am outside Arrivals every night, at the rank, and nobody has ever asked me to wait for anybody. Nobody from that company has rung me, or paid me, or any driver I know.”')) + ' Tauko, ja pyyhkijät. ' + V(LX('“The people, I take where they ask. The trouble is most of them don\'t know where to ask.”'))); }, next: 'taxi' },
       { label: 'Kysy häneltä, minne muut menivät.', if: (G) => G.has('driver_week'), nd: -1, time: 4, once: 'taxi_where', do: (G) => { G.flag('driver_where'); G.note(V(LX('“Out past the lava, somewhere. A white bus takes them, when there is a white bus. Which hotel — I don\'t know. There are five out there and they all look like a conference that never came.”')) + ' Hän vilkaisee sinua peilistä. ' + V(LX('“If you can tell me which one, I will take you. If you can\'t, I will take you where I take everyone who can\'t: a guesthouse in town. The woman who runs it is always awake. Small place, clean, the price is honest, and she has had one of you every night this week.”'))); }, next: 'taxi' },
       { label: 'Pyydä häntä viemään sinut sittenkin takaisin lentoasemalle.', time: 3, once: 'taxi_back', do: (G) => { G.nerves(2); G.dread(2); G.note(V(LX('“Keflavík is closed until five. I can drive you forty minutes to a locked door, if you want to pay for it.”')) + ' Hän ei kuulosta siltä, että vitsailisi. Hän ei kuulosta siltäkään, että kieltäytyisi.'); }, next: 'taxi' },
-      { label: 'Kerro hänelle valkoisesta bussista. Paperikyltistä, huomioliivisestä kuljettajasta, siitä, johon et noussut.', whyNot: 'Et pystyisi puhumaan siitä sivistyneesti, ja hän on ainoa, joka on kysynyt.', nerveMax: 70, if: (G) => G.has('driver_where') && (G.S.looked['buses1:plain'] || G.did('talk_fleece') || G.did('talk_mother') || G.did('talk_couple') || G.has('ally31c')), sub: '9 800 kruunua, hän sanoo, sinne asti. Kortti toimi automaatilla kolmannella yrittämällä.', time: 40, do: (G) => { G.flag('taxi_hraun'); G.S.t = T(1, 3, 35); G.nerves(6); G.dread(2); G.note(V(LX('“The white ones. Yes. That is Hraun. Forty minutes. Nine thousand eight hundred, and I would like it on the card before we leave the lights, if you don\'t mind. I have been burned this week.”')) + ' Kortti toimii. Kaupunki loppuu. Laavaa matalan taivaan alla, ja tie, jonka yksi valkoinen viiva katoaa aina uudelleen. Hän ei puhu, radio puhuu. Kello 03:35 hän kääntyy matalan, leveän, akvaarion lailla valaistun hotellin pihaan ja sanoo ' + V(LX('“Good luck,”')) + ' sellaisen miehen äänellä, joka tarkoittaa sitä eikä odota siitä olevan apua.'); }, next: 'hotel_arrive' },
+      { label: G.has('mail_clue') ? 'Hraun siis. Sinne, minne muut sen sähköpostin saaneet menivät.' : 'Kerro hänelle valkoisesta bussista. Paperikyltistä, huomioliivisestä kuljettajasta, siitä, johon et noussut.', whyNot: 'Et pystyisi puhumaan siitä sivistyneesti, ja hän on ainoa, joka on kysynyt.', nerveMax: 70, if: (G) => G.has('mail_clue') || (G.has('driver_where') && (G.S.looked['buses1:plain'] || G.did('talk_fleece') || G.did('talk_mother') || G.did('talk_couple') || G.has('ally31c'))), sub: '9 800 kruunua, hän sanoo, sinne asti. Se on pakko laittaa kortille.', time: 40, do: (G) => { G.flag('taxi_hraun'); G.S.t = T(1, 3, 35); G.nerves(6); G.dread(2); G.note(V(LX('“The white ones. Yes. That is Hraun. Forty minutes. Nine thousand eight hundred, and I would like it on the card before we leave the lights, if you don\'t mind. I have been burned this week.”')) + ' Kortti toimii. Kaupunki loppuu. Laavaa matalan taivaan alla, ja tie, jonka yksi valkoinen viiva katoaa aina uudelleen. Hän ei puhu, radio puhuu. Kello 03:35 hän kääntyy matalan, leveän, akvaarion lailla valaistun hotellin pihaan ja sanoo ' + V(LX('“Good luck,”')) + ' sellaisen miehen äänellä, joka tarkoittaa sitä eikä odota siitä olevan apua.'); }, next: 'hotel_arrive' },
       { label: 'Majatalo siis. Minne tahansa, missä on sänky ja valo palaa.', kind: 'comply', dd: 4, time: 8, do: (G) => { G.flag('gunnar'); G.note(V(LX('“Lind. Good. Three minutes.”')) + ' Neljä kulmaa, kapea ovi ja sen yllä lyhty, ja mittari, joka näyttää vähemmän kuin pelkäsit. Hän vilkuttaa ajovaloja ovelle, kahdesti, ja himmeän lasin taakse syttyy valo. ' + V(LX('“Tell her Gunnar sent you. She will know what that means by now.”'))); }, next: 'lind_arrive' },
     ],
   };
@@ -608,12 +635,12 @@ CONTENTS.fi = (() => {
     enter: (G) => {
       G.flag('at_hotel'); atLeast(G, 38);
       if (G.once('hotel_paper')) G.msg('paper', { from: 'Teipattu vastaanottotiskiin', subj: 'Tulostettu lappu', body: '<b>PASSENGERS ALBION ATLANTIC AB0271</b>\n\nBUS TO AIRPORT: <b>11:00</b>\n\nPlease wait in lobby.\n\n(No delivery service until 11:00 am)' });
-      if (G.once('hotel_bot')) { G.at(T(1, 3, 50), 'chat', { body: 'Oletko sinä mukava sinun huoneessa? 🙂' }); G.at(T(1, 4, 15), 'chat', { body: 'Sinun bussi lähtee 04:30. Staff jäsen tulee koputtamaan.' }); }
+      if (G.once('hotel_bot')) { G.at(T(1, 3, 50), 'chat', { body: 'Oletko sinä mukava sinun huoneessa? 🙂' }); G.at(T(1, 4, 15), 'chat', { body: 'Sinun bussi lähtee 04:30. Staff jäsen tulee koputtamaan.', key: 'knock_notice' }); }
     },
     text: (G) => p(
       G.has('asked_driver') && W('Kuljettaja ei vastannut kertaakaan. Radiosta tuli jotain islanninkielistä, joka saattoi olla säätiedotus.'),
       'Hotelli siis. Matala, leveä, sellainen paikka, joka on rakennettu konferensseja varten, joita ei koskaan tullut. Yöportieeri jakaa avainkortteja kenkälaatikosta. Sinun kortissasi lukee 214.' + (G.did('talk_fleece') ? ' Fleecemies saa huoneen 216 ja nostaa avaimen sinulle näkyviin kuin arpalipun.' : ''),
-      'Ei, hammastahnaa ei ole. Ei, hammasharjojakaan ei ole. Tänne ei tule mitään kuljetuksia ennen huomisaamun yhtätoista. Automaatti on. Virkailija sanoo tämän kuin ojentaisi sinulle pelastuslautan.',
+      'Ei, hammastahnaa ei ole. Ei, hammasharjojakaan ei ole. Tänne ei tule mitään kuljetuksia ennen aamuyhtätoista. Automaatti on. Virkailija sanoo tämän kuin ojentaisi sinulle pelastuslautan.',
       'Tiskiin on teipattu A4-arkki, kirjoitettu Arialilla, hieman vesitahrainen. Siinä lukee, että bussi lentokentälle lähtee 11:00. Se on ensimmäinen tieto koko yönä, jossa on mukana kellonaika eikä logoa.',
     ),
     choices: [{ label: 'Mene ylös huoneeseen.', time: 8, next: 'room' }],
@@ -634,7 +661,7 @@ CONTENTS.fi = (() => {
     },
     text: (G) => hub(G, roomStatus(G), 'room'),
     choices: (G) => [
-      { label: 'Syö. Sipsejä ja kaksi pikkupulloa viiniä.', whyNot: 'Vatsasi sanoo ei.', nerveMax: 90, sub: 'Tyttöjen illallinen.', if: (G) => G.has('crisps') && !G.has('dinner'), time: 12, do: (G) => { G.flag('dinner'); G.nerves(-10); G.note('Suolaa, sitten viiniä, sitten suolaa. Syöt sängyn reunalla istuen, pussi molemmissa käsissä kuin jokin, joka saattaisi karata. Se on paras ateriasi kahteenkymmeneen tuntiin, ja myös ainoa.'); }, next: 'room' },
+      { label: 'Syö. Sipsejä ja kaksi pikkupulloa viiniä.', whyNot: 'Vatsasi sanoo ei.', nerveMax: 90, sub: 'Tyttöjen illallinen.', if: (G) => G.has('crisps') && !G.has('dinner'), time: 12, do: (G) => { G.flag('dinner'); G.nerves(-10); G.note('Suolaa, sitten viiniä, sitten suolaa. Syöt sängyn reunalla istuen, pussi molemmissa käsissä kuin jokin, joka saattaisi karata. Se on paras ateriasi sitten Lontoon, mikä ei ole paljon sanottu, mutta on silti jotain.'); }, next: 'room' },
       { label: 'Tuijota pikkuisia shampoopulloja ja harkitse hampaidesi pesemistä niillä.', time: 4, do: (G) => { const n = G.count('shampoo'); G.nerves(n === 1 ? -1 : 1); G.note(n === 1 ? 'Shampoo. Hoitoaine. Vartalovoide. Luet ainesosaluettelon. Natriumlauryylieetterisulfaatti on teknisesti ottaen pinta-aktiivinen aine. Lasket pullon pois. Otat sen uudestaan. Lasket sen pois.' : n === 2 ? 'Olet ollut tässä tilanteessa ennenkin. Shampoo ei ole muuttanut mieltään, etkä sinäkään.' : 'Pikkupullot seisovat rivissä hyllyllä ja katselevat sinua. Yksi niistä on siirtynyt. Sinä siirsit sen. Luultavasti sinä siirsit sen.'); }, next: 'room' },
       { label: 'Käy suihkussa. Pue samat vaatteet takaisin päälle.', whyNot: 'Et pysyisi paikallasi sen alla.', nerveMax: 95, time: 20, once: 'shower', do: (G) => { G.nerves(-6); G.dread(-3); G.note('Kuumaa vettä sentään. Islannin kuuma vesi on erinomaista; se haisee hiukan kananmunalle eikä lopu koskaan. Seisot sen alla, kunnes tunnet itsesi taas ihmiseksi, ja sitten puet lentokoneen takaisin päällesi: housut, paidan, sukat, kaikki hieman lämpimämpiä kuin sinä itse.'); }, next: 'room' },
       { label: 'Avaa televisio.', kind: 'comply', dd: 2, time: 6, do: (G) => { const d = G.D, n = G.count('tv'); G.dread(1); G.note(d >= 5 ? 'Kanava 1: parkkipaikka. Sinun parkkipaikkasi, ylhäältä kuvattuna, harmaana. Siellä on bussi. Bussin vieressä hahmo. Sammutat television. Ruudussa näkyy huone, ylhäältä kuvattuna, harmaana.' : d >= 4 ? 'Säätiedotus, islanniksi, loputtomiin. Sitten kanava, jolla näkyy pelkkä valvontakamerakuva parkkipaikasta. Olet melko varma, ettei se ole tämä parkkipaikka. Siellä on bussi.' : n === 1 ? 'Säätiedotus, islanniksi. Kartta saaresta täynnä pieniä vihaisia nuolia. Sitten valokuva hotellista puhelinnumeroineen. Sitten säätiedotus.' : 'Olet nähnyt tämän säätiedotuksen. Se ei ole muuttunut. Nuolet ovat yhä vihaisia. Hotelli on yhä ruudussa puhelinnumeroineen, ikään kuin saattaisit haluta soittaa sinne sen sisältä.'); }, next: 'room' },
@@ -687,14 +714,14 @@ CONTENTS.fi = (() => {
     text: (G) => hub(G, `Aula. ${G.clock(G.t)}. Kyltissä lukee yhä 11:00. ${G.t >= KNOCK_AT ? 'Kello on jo yli puoli viiden.' : 'Yhteentoista on vielä pitkästi aikaa.'}`, 'lobby'),
     choices: (G) => [
       { label: 'Kysy virkailijalta, puhuuko hän ranskaa.', if: (G) => G.S.lang === 'fr' && !G.has('fr_asked'), time: 4, do: (G) => { G.flag('fr_asked'); G.nerves(-2); G.note(LX('“A little. Eleven. The sign. Please.”') + ' Hän sanoi sen hitaasti ja osoitti silti kylttiä, siltä varalta etteivät sanat kantaisi.'); }, next: 'lobby' },
-      { label: 'Pyydä vastaanotosta hammastahnaa.', time: 6, once: 'desk_tp', do: (G) => { G.nerves(2); G.note('Hän kurkkii tiskin alle, tosissaan, pitkään. ' + V(LX('“No. Sorry. The 10-11 has. Twenty minutes, walking.”')) + ' Hän katsoo sinua, ja ovia, ja sinua. ' + V(LX('“Maybe not tonight.”'))); }, next: 'lobby' },
+      { label: 'Pyydä vastaanotosta hammastahnaa.', time: 6, once: 'desk_tp', do: (G) => { G.nerves(2); G.note('Hän kurkkii tiskin alle, tosissaan, pitkään. ' + V(LX('“No. Sorry. The 10-11 will have some. Twenty minutes, walking.”')) + ' Hän katsoo sinua, ja ovia, ja sinua. ' + V(LX('“Maybe not tonight.”'))); }, next: 'lobby' },
       { label: 'Kysy, pitääkö kyltti paikkansa.', kind: 'comply', dd: 1, time: 5, do: (G) => { const n = G.count('sign'); G.note(n === 1 ? 'Hän osoittaa kylttiä. ' + V(LX('“Eleven.”')) + ' Kysyt, keneltä hän sen kuuli. ' + V(LX('“A passenger phoned them. They said yes.”')) + ' Tauko. ' + V(LX('“Or they said something.”')) : n === 2 ? V(LX('“Eleven,”')) + ' hän sanoo katsettaan nostamatta, ennen kuin olet ehtinyt kysyä loppuun.' : 'Hän katsoo sinua hetken ilmeellä, jota et osaa tulkita, ja sanoo sitten: ' + V(LX('“You are in 214,”')) + ' ja palaa ristikkonsa pariin. Et ollut kysynyt.'); if (n >= 3) G.dread(3); }, next: 'lobby' },
       { label: 'Kysy, onko bussi tullut.', kind: 'comply', dd: 3, time: 5, do: (G) => { const d = G.D; G.dread(1); G.note(d >= 4 ? V(LX('“One is outside,”')) + ' hän sanoo. ' + V(LX('“It is not yours.”')) + ' Kysyt, mistä hän sen tietää. Hän kääntää ristikon sinuun päin. Se on tyhjä.' : G.t >= KNOCK_AT ? V(LX('“Somebody came asking for you. In a uniform. I said you were asleep.”')) + ' Et nukkunut. ' + V(LX('“I know.”')) : V(LX('“No coach. Eleven. Please, go up and sleep.”'))); }, next: 'lobby' },
       { label: 'Myyntiautomaatti.', nd: -2, time: 5, do: (G) => { const n = G.count('vend'); if (n === 1) { G.flag('crisps'); G.nerves(-3); G.note('Sipsejä, paprikan makuisia. Kaksi minipulloa punaviiniä, jonka etiketissä on kuva vuoresta. Automaatti hyväksyy korttisi kolmannella yrityksellä ja päästää syvää vastahakoisuutta ilmaisevan äänen. Pitelet illallistasi molemmin käsin.'); } else { G.note(n === 2 ? 'Loppuunmyyty, melkein. Yksi tuote jäljellä, alahyllyllä: purkki skyriä, jonka päiväystä et olisi halunnut lukea.' : 'Automaatin valo lepattaa. Kaikki hyllyt ovat nyt tyhjiä, paitsi skyr, joka on siirtynyt yhtä hyllyä ylemmäs.'); if (n >= 3) G.dread(1); } }, next: 'lobby' },
       { label: 'Kahviautomaatti.', time: 5, once: 'coffee_l', do: (G) => { G.nerves(G.has('coffee') ? 2 : -2); G.note('Kahvia. Mikä tätä kahvia oikein vaivaa. Se maistuu siltä kuin se olisi kuvailtu koneelle puhelimitse. Juot sen seisaaltaan ja katselet ovia.'); }, next: 'lobby' },
-      { label: 'Herätä sohvalla nukkuvat matkustajat. Vertailkaa tietoja.', whyNot: 'Herättäisit heidät huutamalla.', nd: -4, dd: -4, nerveMax: 85, time: 8, once: 'sofa', do: (G) => { G.collect(1); G.nerves(-2); G.note((G.did('talk_couple') ? 'He ovat se pariskunta hallin ikkunan luota.' : 'Vanhempi pariskunta sinun lennoltasi.') + ' He eivät nuku. ' + V('"Me saatiin sähköposti, jossa luki yhdeksän",') + ' hän sanoo. ' + V('"Ja toinen, jossa luki kahdeksan. Ja se chattijuttu sanoo jotain ihan muuta."') + ' Katsotte kaikki kylttiä. ' + V(LX('“Eleven,”')) + ' hän sanoo. ' + V('"Tuloste."')); }, next: 'lobby' },
+      { label: 'Herätä sohvalla nukkuvat matkustajat. Vertailkaa tietoja.', whyNot: 'Herättäisit heidät huutamalla.', nd: -4, dd: -4, nerveMax: 85, time: 8, once: 'sofa', do: (G) => { G.collect(1); G.nerves(-2); G.note((G.did('talk_couple') ? 'He ovat se pariskunta hallin ikkunan luota.' : 'Vanhempi pariskunta sinun lennoltasi.') + ' He eivät nuku. ' + V('"Me saatiin sähköposti, jossa luki yhdeksän",') + ' hän sanoo. ' + V('"Ja toinen, jossa luki kahdeksan. Ja se chattijuttu sanoo jotain ihan muuta."') + ' Katsotte kaikki kylttiä. ' + V('"Yksitoista",') + ' hän sanoo. ' + V('"Tuloste."')); }, next: 'lobby' },
       { label: 'Katso parkkipaikkaa lasin läpi.', whyNot: 'Et halua nähdä.', nd: 3, dreadMax: 90, time: 4, do: (G) => { const d = G.D; G.dread(2); G.nerves(d >= 4 ? 5 : 0); G.note(d >= 5 ? 'Bussi seisoo nyt aivan ovien edessä. Moottori käy. Sisävalot palavat. Ovet liukuvat sen edessä auki, ja jäävät auki, ja kylmä virtaa sisään. Kukaan ei nouse kyydistä.' : d >= 4 ? 'Parkkipaikan perällä ajovalot, moottori tyhjäkäynnillä. Niiden takana hahmo, jolla on bussin muoto. Virkailija ei nosta katsettaan. Ei ole nostanut vähään aikaan.' : 'Soraa, yksi lyhtypylväs, tie. Auto ajaa ohi hidastamatta. Tähyilet jotakin. Haluaisit lakata.'); if (d >= 4) G.flag('looked1'); }, next: 'lobby' },
-      { label: 'Mene ulos.', whyNot: 'Ovet ovat väärään suuntaan.', dd: -2, dreadMax: 88, time: 3, next: 'carpark' },
+      { label: 'Mene ulos.', whyNot: 'Ei niistä ovista.', dd: -2, dreadMax: 88, time: 3, next: 'carpark' },
       { label: 'Takaisin ylös käytävälle.', time: 3, next: 'corridor' },
     ],
   };
@@ -722,7 +749,7 @@ CONTENTS.fi = (() => {
     art: 'road',
     loc: 'Tie · kohti 10-11:tä',
     text: p(
-      'Tuulta. Laavaa. Tie, jolla ei ole jalkakäytävää, ja valkoinen viiva, joka katoaa aina uudelleen. Kahdeksan minuutin kuluttua et enää näe hotellia takanasi; kymmenen minuutin kuluttua et näe 10-11:tä edessäsi.',
+      'Tuulta. Laavaa. Tie, jolla ei ole jalkakäytävää, ja valkoinen viiva, joka katoaa aina uudelleen. Kahdeksan minuutin kuluttua et enää näe hotellia takanasi; kymmenen minuutin kuluttua et vieläkään näe 10-11:tä edessäsi.',
       'Sitten ajovalot, hitaat, takaapäin. Bussi. Se ajaa rinnallesi ja pysähtyy, ja ovi taittuu auki pehmeällä, kalliin kuuloisella äänellä. Lämmintä valoa. Istuinrivejä, ja niillä ihmisiä, jotka istuvat hyvin hiljaa.',
       V('"Albion matkustaja?"') + ' sanoo ääni, jonka tunnistat kuulutuksista 37 000 jalan korkeudesta. ' + V('"Me teemme meidän parasta. Hyppää päälle."'),
     ),
@@ -763,7 +790,7 @@ CONTENTS.fi = (() => {
     choices: [
       { label: 'Avaa ovi.', kind: 'comply', sub: 'Se saattaa olla bussi.', do: (G) => G.end('nightcoach') },
       { label: 'Katso ovisilmästä.', dd: 6, nd: 6, time: 2, do: (G) => { G.nerves(9); G.flag('spyhole'); G.note('Käytävä on tyhjä. Matto ovesi edessä on märkä. Koputus jatkuu, tasaisena, eikä tule mistään erityisestä suunnasta.'); }, next: 'knock2' },
-      { label: 'Kyltissä luki 11:00. Älä avaa. Älä vastaa.', whyNot: 'Et voi olla vastaamatta.', nd: 5, dreadMax: 80, time: 20, do: (G) => { G.nerves(5); G.note('Istuit sängyllä selkä sängynpäätyä vasten ja katse ovessa ja laskit koputuksia. Kuudenkymmenen jälkeen menetit laskun. Sitten ne lakkasivat, ja se oli jonkin aikaa vielä pahempaa.'); }, next: 'window' },
+      { label: 'Kyltissä luki 11:00. Älä avaa. Älä vastaa.', whyNot: 'Et voi olla vastaamatta. He sanoivat, että koputtaisivat.', nd: 5, dreadMax: 80, instr: 'knock_notice', time: 20, do: (G) => { G.nerves(5); G.note('Istuit sängyllä selkä sängynpäätyä vasten ja katse ovessa ja laskit koputuksia. Kuudenkymmenen jälkeen menetit laskun. Sitten ne lakkasivat, ja se oli jonkin aikaa vielä pahempaa.'); }, next: 'window' },
     ],
   };
 
@@ -796,15 +823,15 @@ CONTENTS.fi = (() => {
   scenes.window = {
     art: 'room',
     loc: (G) => `Hótel Hraun · Room 214 · ${G.clock(G.t)}`,
-    enter: (G) => { G.S.t = Math.max(G.t, T(1, 4, 50)); G.bot('Hei! Minä näen että sinä olet huone 214. Bussi odottaa sinua parkki alueella. Ole hyvä älä katso ulos ikkunasta. 🙂'); },
+    enter: (G) => { G.S.t = Math.max(G.t, T(1, 4, 50)); if (!G.dead()) G.bot('Hei! Minä näen että sinä olet huone 214. Bussi odottaa sinua parkki alueella. Ole hyvä älä katso ulos ikkunasta. 🙂', 0, 'nolook'); },
     text: (G) => p(
       G.last(),
-      G.has('hid_lobby') ? 'Menit lopulta takaisin ylös, koska muuta paikkaa ei ollut, missä olla. Käytävä oli tyhjä. Koputus on lakannut. Puhelimesi valaisee kattoa. Viesti Allylta.' : 'Taas huoneessa, tai yhä siellä. Koputus on lakannut. Puhelimesi valaisee kattoa. Viesti Allylta.',
-      W('Bussi odottaa sinua parkkipaikalla. Ethän katso ulos ikkunasta.'),
+      (G.has('hid_lobby') ? 'Menit lopulta takaisin ylös, koska muuta paikkaa ei ollut, missä olla. Käytävä oli tyhjä. Koputus on lakannut. ' : 'Taas huoneessa, tai yhä siellä. Koputus on lakannut. ') + (G.dead() ? 'Puhelin on pimeänä peitolla, ja se on melkein pahempaa: mitä ikinä he sanovat, he sanovat sen ei kenellekään.' : 'Puhelimesi valaisee kattoa. ' + ALLY_MSG(G)),
+      !G.dead() && (G.readMsg('nolook') ? W('Olet lukenut sen. Siinä kiellettiin katsomasta ulos ikkunasta.') : W('Et ole lukenut sitä.')),
       'Verho on ohut. Sen läpi kuultaa valoa, ja valo värähtelee hieman, niin kuin käyvän moottorin valo värähtelee.',
     ),
     choices: [
-      { label: 'Katso.', whyNot: 'Hän kielsi.', dd: 10, nd: 8, dreadMax: 90, sub: 'Ihan vähän vain.', time: 5, do: (G) => { G.flag('seen'); G.flag('looked_out'); G.nerves(14); atLeast(G, 78); }, next: 'window2' },
+      { label: 'Katso.', whyNot: 'He kielsivät.', dd: 10, nd: 8, dreadMax: 90, instr: 'nolook', sub: 'Ihan vähän vain.', time: 5, do: (G) => { G.flag('seen'); G.flag('looked_out'); G.nerves(14); atLeast(G, 78); }, next: 'window2' },
       { label: 'Älä. Käännä puhelin näyttö alaspäin. Vedä peitto pään yli.', kind: 'comply', dd: 6, time: 5, do: (G) => G.nerves(2), next: 'sleep' },
     ],
   };
@@ -832,13 +859,13 @@ CONTENTS.fi = (() => {
       if (G.has('toothpaste')) G.nerves(-6);
       if (G.dead() || G.battery() < 20) { G.flag('borrowed_cable'); G.charge(35); }
       G.at(T(1, 7, 35), 'sms', { from: 'Jo 💛', body: 'HERRANJUMALA OOTKO SÄ ISLANNISSA?? sun on pakko käydä blue lagoonissa. PAKKO. se on tyyliin 20 min kentältä' });
-      G.at(T(1, 8, 5), 'chat', { body: 'Hyvää huomenta! Sinun transfer lentokentälle on vahvistettu 08:00. Ole hyvä ole lobbyssa. 🚌' });
-      G.at(T(1, 9, 40), 'email', { from: 'Albion Atlantic Customer Care', subj: 'Sinun transfer lentokentälle', stamp: T(1, 9, 40), body: 'Rakas Asiakas,\n\nBussit keräävät sinut sinun accommodation 09:00 sinun uudelleen bookattu lento AB 0271 varten.\n\nOle hyvä ole valmis lobbyssa 08:45.\n\nMe teemme meidän parasta.' });
+      G.at(T(1, 8, 5), 'chat', { body: 'Hyvää huomenta! Sinun transfer lentokentälle on vahvistettu 08:00. Ole hyvä ole lobbyssa. 🚌', key: 'morning_chat' });
+      G.at(T(1, 9, 40), 'email', { from: 'Albion Atlantic Customer Care', subj: 'Sinun transfer lentokentälle', stamp: T(1, 9, 40), key: 'morning_mail', body: 'Rakas Asiakas,\n\nBussit keräävät sinut sinun accommodation 09:00 sinun uudelleen bookattu lento AB 0271 varten.\n\nOle hyvä ole valmis lobbyssa 08:45.\n\nMe teemme meidän parasta.' });
       G.at(T(1, 9, 55), 'chat', { body: 'Sinun bussi on täällä. Se on se kiva yksi. 🚌' });
     },
     text: (G) => p(
       G.has('allnighter') ? 'Harmaata valoa. 07:30. Et nukkunut, ja olet yhä Islannissa.' : 'Harmaata valoa. 07:30. Nukuit, tai jotain sinne päin, ja olet yhä Islannissa.',
-      'Aamiaiseksi on skyriä, leipää ja kahvia, joka maistuu siltä kuin sen olisi keittänyt joku, jolle on joskus kuvailtu kahvia. Huone on täynnä lentosi väkeä. Kaikilla on eiliset vaatteet päällä. Kaikki vertailevat tietojaan: mikä hotelli, mikä noutoaika, mihin kolmesta ristiriitaisesta viestistä kukin on päättänyt uskoa.',
+      'Aamiaiseksi on skyriä, leipää ja kahvia, joka on kuumaa, ja ruskeaa, ja siihen se jää. Huone on täynnä lentosi väkeä. Kaikilla on eiliset vaatteet päällä. Kaikki vertailevat tietojaan: mikä hotelli, mikä noutoaika, mihin kolmesta ristiriitaisesta viestistä kukin on päättänyt uskoa.',
       G.has('borrowed_cable') && 'Jollakulla viereisessä pöydässä on johto, joka sopii. Kytket puhelimen leivänpaahtimen viereiseen pistorasiaan, ja se palaa henkiin, hitaasti, niin kuin kasvot palaavat, ja ensimmäiseksi se kertoo sinulle kaiken, mistä jäit paitsi.',
       'Tulostettu kyltti on yhä teipattuna tiskiin. 11:00. Joku on piirtänyt siihen pienen sydämen.',
     ),
@@ -853,7 +880,7 @@ CONTENTS.fi = (() => {
       if (G.once('morn_intro')) G.note(p(G.last(), 'Käytännössä kaikki on ajoitettu niin, että se sattuu mahdollisimman paljon, mutta ei jätä sinulle vapautta mennä välillä tekemään jotain mukavaa. Kolme tuntia, eikä niillä voi tehdä muuta kuin odottaa bussia, joka saattaa olla se bussi tai sitten ei.'));
     },
     text: (G) => hub(G,
-      `Aula. ${G.clock(G.t)}. Kyltissä lukee 11:00. ${G.t >= T(1, 9, 45) ? 'Sähköpostissa luki 09:00, ja se tuli perille 09:40. ' : G.t >= T(1, 8, 5) ? 'Chatbotti sanoi 08:00. Kello on jo yli 08:00. ' : ''}Kukaan ei ole nähnyt bussia, joka olisi sinun.`,
+      `Aula. ${G.clock(G.t)}. Kyltissä lukee 11:00. ${G.readMsg('morning_mail') ? 'Sähköpostissa luki 09:00, ja se tuli perille 09:40. ' : G.readMsg('morning_chat') ? 'Chatbotti sanoi 08:00. Kello on jo yli 08:00. ' : ''}Kukaan ei ole nähnyt bussia, joka olisi sinun.`,
       'morning'),
     choices: (G) => [
       { label: 'Näytä UK261-QR-koodi jokaiselle matkustajalle, jonka tavoitat.', whyNot: 'Kätesi eivät pitäisi puhelinta paikallaan.', dd: -8, nd: -4, nerveMax: 90, sub: 'Sillä varauksella, että lentoyhtiö panee vastaan.', if: (G) => G.has('uk261'), once: 'qr1', time: 20, do: (G) => { G.collect(2); G.nerves(-5); G.note('Kierrät pöydästä pöytään puhelin ojossa kuin pidätysmääräys. Ihmiset ottavat siitä kuvan. Bageliaan syövä nainen sanoo: ' + V('"Mä oon valmis olemaan Karen."') + ' Joku taputtaa, kerran.'); }, next: 'hotel_morning' },
@@ -862,8 +889,8 @@ CONTENTS.fi = (() => {
       { label: 'Mene takaisin huoneeseen. Suihkuun. Pese edes kasvosi.', whyNot: 'Et pysyisi paikallasi sen alla.', nerveMax: 92, time: 25, once: 'morn_shower', do: (G) => { G.nerves(-5); G.dread(-2); G.note('Kuumaa vettä. Samat vaatteet. Päivänvalossa huone on vain huone: shampoot, vedenkeitin, ikkuna parkkipaikalle, jolla seisoo bussi. Et katso pitkään.'); }, next: 'hotel_morning' },
       { label: 'Juttele taaperon äidin kanssa.', whyNot: 'Pelästyttäisit lapsen.', nd: -3, dd: -3, nerveMax: 80, time: 10, once: 'morn_mother', do: (G) => { G.collect(1); G.nerves(-3); G.note(V('"Hän haluaisi olla jo kotona",') + ' äiti sanoo taaperosta, joka on pöydän alla. ' + V('"Niin minäkin. Kuulitko sinä viime yönä koputusta?"') + (G.has('knocked') ? ' Sanot, että kuulit. Hän sanoo: ' + V('"Ei mekään avattu."') : ' Sanot, että olit alakerrassa. Hän katsoo sinua kuin se olisi ollut valinta. ' + V('"Me ei avattu."'))); }, next: 'hotel_morning' },
       { label: 'Tarkista lennon tilanne lentoyhtiön sivuilta.', dd: 3, nd: 3, time: 8, if: (G) => !G.dead(), do: (G) => { const n = G.count('status'); G.dread(2); G.batt(-1); G.note(n === 1 ? 'AB 0271 · KEF → LAX · 15:10 · AIKATAULUSSA. Minkä aikataulun mukaan, sitä ei kerrota.' : n === 2 ? 'AB 0271 · 15:10 · AIKATAULUSSA. Sitten, silmiesi edessä, 15:25. Sitten taas 15:10.' : 'Sivu ei lataudu. Sitten se latautuu, eikä lentoa näy. Sitten näkyy. 15:10. Panet puhelimen pois ennen kuin se ehtii taas muuttua.'); }, next: 'hotel_morning' },
-      { label: G.t >= T(1, 9, 40) ? 'Mene ulos katsomaan, näkyykö klo 09:00 bussia.' : 'Mene ulos katsomaan, näkyykö klo 08:00 bussia.', kind: 'comply', dd: 5, if: (G) => G.t >= T(1, 8, 5) && G.t < T(1, 10, 0), time: 10, next: 'decoy_morning' },
-      { label: 'Mene kuumille lähteille. Olet aina halunnut sinne.', sub: 'Se on kahdenkymmenen minuutin päässä. Kaikki sanovat niin.', do: (G) => G.end('tantalus') },
+      { label: G.readMsg('morning_mail') ? 'Mene ulos katsomaan, näkyykö klo 09:00 bussia.' : 'Mene ulos katsomaan, näkyykö klo 08:00 bussia.', kind: 'comply', dd: 5, if: (G) => (G.readMsg('morning_chat') || G.readMsg('morning_mail')) && G.t < T(1, 10, 0), time: 10, next: 'decoy_morning' },
+      { label: 'Mene kuumille lähteille. Olet aina halunnut sinne.', sub: 'Lentoasemalle on kaksikymmentä minuuttia. Kaikki sanovat niin.', do: (G) => G.end('tantalus') },
       { label: 'Odota aulassa.', kind: 'comply', dd: 3, nd: 2, sub: 'Puoli tuntia tätä.', time: 30, do: (G) => { G.nerves(3); G.dread(2); G.note(G.pick(['Puoli tuntia. Kahviautomaatti, ovet, kyltti. Lapsi laskee sataan ja aloittaa alusta.', 'Puoli tuntia. Jonkun puhelimen herätys soi – Los Angelesin aikaan asetettuna – ja kaikki nauravat, ja sitten ei kukaan.', 'Puoli tuntia. Ulkona tulee bussi, joka ei ole sinun, ja lähtee. Et nouse. Ei nouse kukaan muukaan.'])); }, next: 'hotel_morning' },
     ],
     status: (G) => (G.has('hint_notes') ? 'Kuulopuheita: kaikki saivat lentoyhtiöltä eri ajan. Kaikki luottavat tulosteeseen. Vaakunalliset bussit "ei oo meidän".' : ''),
@@ -877,7 +904,7 @@ CONTENTS.fi = (() => {
       'Kukaan muu ei ole tullut aulasta ulos. Ikkunoista näkyy, kuinka jo kyydissä olevat matkustajat istuvat selkä suorana puhtaissa paidoissa ja katsovat tyhjyyteen.',
     ),
     choices: (G) => [
-      { label: G.t >= T(1, 9, 40) ? 'Nouse kyytiin. Sähköpostissahan luki 09:00.' : 'Nouse kyytiin. Chatbottihan sanoi 08:00.', kind: 'comply', do: (G) => G.end('crew') },
+      { label: G.readMsg('morning_mail') ? 'Nouse kyytiin. Sähköpostissahan luki 09:00.' : 'Nouse kyytiin. Chatbottihan sanoi 08:00.', kind: 'comply', do: (G) => G.end('crew') },
       { label: 'Mene takaisin sisään. Älä sano siitä kenellekään mitään.', whyNot: 'Hän katsoo sinua.', dreadMax: 85, time: 5, do: (G) => { G.nerves(6); G.dread(5); G.note('Menit takaisin sisään. Kukaan ei kysynyt mitään. Lasin takana bussi seisoi paikallaan, ovi auki, pitkään.'); }, next: 'hotel_morning' },
     ],
   };
@@ -889,7 +916,7 @@ CONTENTS.fi = (() => {
     enter: (G) => { if (G.t < T(1, 10, 15)) G.S.t = T(1, 10, 15); G.dread(4); },
     text: (G) => p(
       'Joku sanoo, että ulkona on bussi. Kysyt vastaanottovirkailijalta, onko se sinun. Hän ei tiedä. Hän osoittaa Arialilla tulostettua kylttiä. ' + V(LX('“Maybe you should hurry.”')),
-      'Kuvittele videopelin mittari, mutta hermoillesi, hupenemassa kohti ohutta, värisevää punaista viipaletta.',
+      'Kuvittele videopelin mittari, mutta hermoillesi, ja sen yläpäässä ohut, värisevä punainen viipale.',
       'Ulkona: busseja. Kukaan ei ole kertonut, mikä niistä. Yhdessäkään ei lue lentosi numeroa, paitsi siinä yhdessä, jossa lukee, tussilla.',
       G.has('hint_notes') && W('"Ne vaakunalliset ei oo meidän."'),
     ),
@@ -900,7 +927,7 @@ CONTENTS.fi = (() => {
         name: 'Sama valkoinen bussi kuin eilen illalla, tai hyvin sen näköinen',
         sign: G.pick(['AIRPORT', 'AB0271 → KEF', 'FLIGHT PPL AIRPORT']), signStyle: 'paper',
         look: ['Kuljettajalla huomioliivi. Eri voileipä.', 'Puolillaan. Aulasta tulee yhä ihmisiä sitä kohti.'],
-        hidden: [(G.did('talk_fleece') || G.has('met_fleece') ? 'Fleece. ' : 'Fleecemies passintarkastuksesta. ') + 'Taapero. Mies paikalta 31C. Samat vaatteet kuin eilen, tietysti, mitä muutakaan heillä olisi päällään.', 'Sinulla on huono kasvomuisti. Nämä tunnet.'],
+        hidden: [(G.did('talk_fleece') || G.has('met_fleece') ? 'Fleece. ' : 'Fleecemies hallista. ') + 'Taapero. Mies paikalta 31C. Samat vaatteet kuin eilen, tietysti, mitä muutakaan heillä olisi päällään.', 'Sinulla on huono kasvomuisti. Nämä tunnet.'],
         board: { time: 5, do: (G) => G.flag('bus2_ok'), next: 'ride2' },
       };
       const crest = {
@@ -939,7 +966,7 @@ CONTENTS.fi = (() => {
     },
     text: (G) => p(
       'Päättelet olevasi oikeassa paikassa vain siitä, että alat tunnistaa muita matkustajia, vaikka kasvomuistisi on huono. Bussi lähtee kaksikymmentä minuuttia myöhässä, mikä laskujesi mukaan tarkoittaa, että ehdit lentokentälle vaivaiset neljäkymmentä minuuttia ennen kuin lähtöselvitys edes alkaa.',
-      'Vauva parkuu. ' + (G.did('morn_mother') ? 'Äiti sanoo sen uudestaan, tällä kertaa koko bussille: ' : 'Äiti mutisee: ') + V('"Hän haluaisi olla jo kotona",') + ' ja koko bussi nauraa, surumielisesti.',
+      'Taapero ulvoo. ' + (G.did('morn_mother') ? 'Äiti sanoo sen uudestaan, tällä kertaa koko bussille: ' : 'Äiti mutisee: ') + V('"Hän haluaisi olla jo kotona",') + ' ja koko bussi nauraa, surumielisesti.',
       'Islanti lipuu ohi ikkunan takana: erinomaista hanavettä, kauniita maisemia, kohtalaisen mukavia ihmisiä, joista ei välttämättä ole apua mutta jotka eivät uhkaile eivätkä valehtele sinulle. Islannille täydet pisteet siitä. Keflavík on syytön.',
     ),
     choices: [{ label: 'Saavu perille.', time: 55, do: (G) => G.nerves(-4), next: 'airport' }],
@@ -1123,11 +1150,11 @@ CONTENTS.fi = (() => {
     X('AB0271: Ole hyvä vahvista sinun sijainti. Vastaa sinun huone numero.');
     X('AB0271: Ole hyvä vahvista sinun sijainti.');
     X('AB0271: Ole hyvä vahvista.');
-    A('Sinä olet Hótel Lind, huone 7.', 3);
+    msgs.push({ ch: 'chat', body: 'Sinä olet Hótel Lind, huone 7.', dd: 3, key: 'located' });
     A('Kiitos sinulle. 🙂');
     E('Transfer sinun accommodation — järjestetty', 'Rakas Asiakas,\n\nAjoneuvo on järjestetty palauttamaan sinut sinun accommodation.\n\nKeräys: Hótel Lind, 04:30.\n\nStaff jäsen tulee koputtamaan.\n\nMe teemme meidän parasta.', 3);
     X('AB0271: Ajoneuvo kerää sinut 04:30 sinun nykyinen sijainti. Ole hyvä ole valmis.');
-    A('Sinun transfer on vahvistettu 04:30. Ole hyvä pysy sinun huoneessa. 🚌');
+    msgs.push({ ch: 'chat', body: 'Sinun transfer on vahvistettu 04:30. Ole hyvä pysy sinun huoneessa. 🚌', dd: 1, key: 'knock_notice' });
     ['Oletko sinä mukava? 🙂', 'Ole hyvä pysy missä sinä olet.', 'Onko siellä jotain muuta? Siellä ei ole mitään muuta.', 'Enemmistö asiakkaat on heidän accommodation.', 'Me voimme nähdä että sinä olet edelleen siellä.', 'Ole hyvä älä tee lisää järjestelyjä.'].forEach((t) => A(t));
     E('Tärkeä: asiakkaat ei heidän accommodation', 'Rakas Asiakas,\n\nAsiakkaat jotka eivät ole heidän järjestetty accommodation keräys aikana voidaan tallentaa no-show ja ei välttämättä accommodated uudelleen bookattu service.\n\nTämä on sinun turvallisuus varten.\n\nMe teemme meidän parasta.', 3);
     X('AB0271: Asiakkaat ei heidän accommodation voidaan tallentaa NO-SHOW. Vastaa STOP opt out varten.');
@@ -1138,7 +1165,7 @@ CONTENTS.fi = (() => {
     A('Ole hyvä jatka ovelle 04:30. Älä avaa sitä ennen. Älä avaa sitä jälkeen.', 2);
     E('Lopullinen ilmoitus', 'Rakas Asiakas,\n\nTämä on lopullinen ilmoitus.\n\nMe teemme meidän parasta.', 3);
     X('AB0271: Final notice.');
-    msgs.push({ ch: 'email', from: 'Albion Atlantic Customer Care', subj: 'Sinun auto odottaa', body: 'Rakas Asiakas,\n\nAuto on järjestetty palauttamaan sinut sinun accommodation Hótel Hraun.\n\nSinun kuljettaja odottaa ulkopuolella Hótel Lind. Ole hyvä etsi Albion Atlantic vaakuna.\n\nArvioitu matka aika: —:—', dd: 3, actions: [{ label: 'Mene alas autoon', if: (G) => G.has('lind') && !G.has('morning'), next: 'lind_car' }] });
+    msgs.push({ ch: 'email', from: 'Albion Atlantic Customer Care', subj: 'Sinun auto odottaa', body: 'Rakas Asiakas,\n\nAuto on järjestetty palauttamaan sinut sinun accommodation Hótel Hraun.\n\nSinun kuljettaja odottaa ulkopuolella Hótel Lind. Ole hyvä etsi Albion Atlantic vaakuna.\n\nArvioitu matka aika: —:—', dd: 3, key: 'car', actions: [{ label: 'Mene alas autoon', if: (G) => G.has('lind') && !G.has('morning'), next: 'lind_car' }] });
     A('Me tiedämme mikä huone sinä olet sisällä. 🙂', 2);
     // stamped across the dark hours, from the moment the phone died to now, so they all land at once
     const t0 = G.S.deadAt != null ? G.S.deadAt : T(1, 2, 50), t1 = Math.max(t0 + msgs.length, G.t - 4);
@@ -1156,7 +1183,7 @@ CONTENTS.fi = (() => {
       'Ei, tulostettua kylttiä ei ole. Ei, kukaan ei ole soittanut. ' + V(LX('“Do you need anything? Toothpaste. A charger — everybody leaves chargers. There is bread in the kitchen, and skyr. Ask. I am here all night.”')),
     ),
     choices: [
-      { label: 'Kyllä. Hammastahnaa, kiitos. Ja laturi, jos jokin sopii. Ja mitä ikinä keittiöstä löytyy.', nd: -3, dd: 1, time: 8, do: (G) => { G.flag('lind_tp'); G.flag('charger'); G.flag('lind_food'); G.S.once.lind_desk_tp = true; G.S.once.lind_desk_ch = true; G.S.once.lind_desk_food = true; G.nerves(-4); G.dread(2); G.note('Puoliksi käytetty tuubi düsseldorfilaiselta mieheltä, hammasharja yhä pakkauksessaan, tarjotin leipää ja skyriä, ja laatikko: kymmeniä johtoja, kaikenlaisia, joita pidellään puhelimesi vieressä yksi kerrallaan kuin hammaslääkäri. Neljäs sopii. ' + V(LX('“Keep it. Everybody leaves them.”')) + ' Menet ylös sylin täydeltä, kuin joku, joka on käynyt ostoksilla.'); }, next: 'lind_room' },
+      { label: 'Kyllä. Hammastahnaa, kiitos. Ja laturi, jos jokin sopii. Ja mitä ikinä keittiöstä löytyy.', nd: -3, dd: 1, time: 8, do: (G) => { G.flag('lind_tp'); G.flag('charger'); G.flag('lind_food'); G.S.once.lind_desk_tp = true; G.S.once.lind_desk_ch = true; G.S.once.lind_desk_food = true; G.nerves(-4); G.dread(2); G.note('Puoliksi käytetty tuubi düsseldorfilaiselta mieheltä, hammasharja yhä pakkauksessaan, tarjotin leipää ja skyriä, ja laatikko: kymmeniä johtoja, kaikenlaisia, joita kokeillaan puhelimeesi yksi kerrallaan kuin avaimia. Neljäs sopii. ' + V(LX('“Keep it. Everybody leaves them.”')) + ' Menet ylös sylin täydeltä, kuin joku, joka on käynyt ostoksilla.'); }, next: 'lind_room' },
       { label: 'Pelkkä huone, toistaiseksi.', time: 6, do: (G) => G.note('Sanot hänelle, että mietit asiaa. Sinulla ei ole aavistustakaan, miksi sanoit niin. Hän nyökkää kuin olisi kuullut sen ennenkin, palaa pokkariinsa ja sanoo, katsettaan nostamatta, että hän on täällä koko yön.'), next: 'lind_room' },
     ],
   };
@@ -1174,7 +1201,7 @@ CONTENTS.fi = (() => {
     choices: (G) => [
       { label: 'Kytke puhelin lataukseen.', if: (G) => G.has('charger') && G.dead(), time: 3, next: 'lind_charge' },
       { label: 'Pese hampaasi. Ihan oikeasti pese ne.', if: (G) => G.has('lind_tp') && !G.did('brush'), once: 'brush', time: 4, do: (G) => { G.nerves(-4); G.dread(-1); G.note('Hammastahnaa, joka kuului vieraalle ihmiselle Düsseldorfista. Harjaat kaksi täyttä minuuttia ja katsot sillä aikaa itseäsi peilistä, ja kahden minuutin ajan olet ihminen, joka on huomenna menossa jonnekin.'); }, next: 'lind_room' },
-      { label: 'Syö leipä ja skyr, jotka hän jätti tarjottimelle.', if: (G) => G.has('lind_food') && !G.has('lind_ate'), time: 8, do: (G) => { G.flag('lind_ate'); G.nerves(-8); G.note('Leipää, voita, purkki skyriä, jonka päiväyksen kanssa voi elää. Syöt sängyn reunalla tarjotin polvillasi. Se on toiseksi paras ateriasi kahteenkymmeneen tuntiin, ja ainoa.'); }, next: 'lind_room' },
+      { label: 'Syö leipä ja skyr, jotka hän jätti tarjottimelle.', if: (G) => G.has('lind_food') && !G.has('lind_ate'), time: 8, do: (G) => { G.flag('lind_ate'); G.nerves(-8); G.note('Leipää, voita, purkki skyriä, jonka päiväyksen kanssa voi elää. Syöt sängyn reunalla tarjotin polvillasi. Se on paras ateriasi kahteenkymmeneen tuntiin, eikä kukaan järjestänyt sitä.'); }, next: 'lind_room' },
       { label: 'Käy suihkussa. Pue samat vaatteet takaisin päälle.', whyNot: 'Et pysyisi paikallasi sen alla.', nerveMax: 95, time: 20, once: 'lind_shower', do: (G) => { G.nerves(-6); G.dread(-3); G.note('Kuumaa vettä, joka tuoksuu hennosti munalta eikä lopu kesken. Seisot siinä, kunnes olet ihminen, ja sitten puet lentokoneen takaisin päällesi.'); }, next: 'lind_room' },
       { label: 'Keitä teetä vedenkeittimellä.', whyNot: 'Kätesi läikyttäisivät sen.', nerveMax: 90, time: 8, once: 'lind_tea', do: (G) => { G.nerves(-5); G.dread(-2); G.note('Teetä, ja siihen oikeaa maitoa yhteisen jääkaapin kannusta, johon joku on kirjoittanut nimen ja hymynaaman. Pitelet kuppia molemmin käsin. Se on ensimmäinen lämmin asia, joka ei ole ollut valhetta.'); }, next: 'lind_room' },
       { label: 'Katso ikkunasta kadulle.', whyNot: 'Tiedät nyt, mitä siellä on.', dd: 2, dreadMax: 85, time: 3, do: (G) => { const d = G.D, n = G.count('lwin'); G.dread(2); G.nerves(d >= 4 ? 6 : 1); if (d >= 4) G.flag('looked_lind'); G.note(d >= 5 ? 'Bussi on nyt kadulla, täyttää sen, peilit kämmenen päässä seinistä kummallakin puolella. Sisävalot palavat. Kaikki sisällä istuvat kasvot majataloon päin, selkä suorana, liikkumatta. Ja oven vieressä, kädet ristissä, tummansiniseen pukeutunut mies, joka katsoo ylös yhteen ikkunaan. Päästät irti verhosta.' : d >= 4 ? 'Vastapäisen lyhdyn alla tummansiniseen univormuun pukeutunut mies, hyvin suorassa, kädet ristissä. Hän ei katso majataloa. Hän katsoo ikkunaa kahden ikkunan päässä sinun ikkunastasi. Sitten yhden päässä.' : n === 1 ? 'Katu. Lyhty. Kissa muurilla, tekemättä mitään, suurenmoisesti. Voisit itkeä sen kissan takia.' : 'Katu. Lyhty. Auto ajaa hitaasti ohi, katolla valo, eikä pysähdy. On hiljaisempaa kuin äsken.'); }, next: 'lind_room' },
@@ -1191,19 +1218,19 @@ CONTENTS.fi = (() => {
       G.flag('loc_lind_lobby');
       if (G.t >= KNOCK_AT && !G.has('knocked')) { G.go('lind_lobby_knock'); return; }
       if (G.t >= T(1, 6, 0)) { G.flag('allnighter'); G.go('lind_sleep'); return; }
-      if (G.once('lind_lobby_intro')) G.note(p(G.last(), 'Virkailija, pokkari, oven takana keittiö, jossa palaa valo, laatikko, jonka hän avaa pyytämättä. Se on täynnä johtoja. Kymmeniä. Kaikenlaisia. Niitä ovat jättäneet kaikki vieraat, jotka ovat ikinä yöpyneet täällä ja menneet kotiin.'));
+      if (G.once('lind_lobby_intro')) G.note(p(G.last(), G.has('charger') ? 'Virkailija, pokkari, oven takana keittiö, jossa palaa valo. Johtolaatikko on taas kiinni, ja taskussasi oleva johto on ainoa omistamasi asia, joka on annettu sinulle tänä yönä.' : 'Virkailija, pokkari, oven takana keittiö, jossa palaa valo, laatikko, jonka hän avaa pyytämättä. Se on täynnä johtoja. Kymmeniä. Kaikenlaisia. Niitä ovat jättäneet kaikki vieraat, jotka ovat ikinä yöpyneet täällä ja menneet kotiin.'));
     },
     text: (G) => p(`Vastaanotto. ${G.clock(G.t)}. Virkailija on yhä hereillä. Ulko-ovi on lukossa.`, G.last(), G.amb('lind_lobby', LIND_AMB.lobby)),
     choices: (G) => [
       { label: 'Kysy, puhuuko hän ranskaa.', if: (G) => G.S.lang === 'fr' && !G.has('fr_asked'), time: 4, do: (G) => { G.flag('fr_asked'); G.nerves(-2); G.note(LX('“A little. Toothpaste, charger, kitchen. Sleep.”') + ' Hän sanoi sen hitaasti, naputtaen ne yksi kerrallaan pokkarin kanteen.'); }, next: 'lind_lobby' },
       { label: 'Pyydä hammastahnaa.', time: 4, once: 'lind_desk_tp', do: (G) => { G.flag('lind_tp'); G.nerves(-3); G.note('Hän kurottaa tiskin alle ja nostaa esiin tuubin, puoliksi käytetyn, vieraalta, joka lähti kiireessä. ' + V(LX('“Düsseldorf,”')) + ' hän sanoo, alkuperätietona. On myös hammasharja, yhä pakkauksessaan.'); }, next: 'lind_lobby' },
-      { label: 'Pyydä laturia.', time: 4, once: 'lind_desk_ch', do: (G) => { G.flag('charger'); G.nerves(-2); G.dread(2); G.note('Laatikko. Hän penkoo sitä ja pitelee johtoja puhelimesi vieressä kuin hammaslääkäri. Neljäs sopii. ' + V(LX('“Keep it. Everybody leaves them.”')) + ' Pitelet sitä hetken ennen kuin panet sen taskuusi, kuin se olisi päätös.'); }, next: 'lind_lobby' },
+      { label: 'Pyydä laturia.', time: 4, once: 'lind_desk_ch', do: (G) => { G.flag('charger'); G.nerves(-2); G.dread(2); G.note('Laatikko. Hän penkoo sitä ja kokeilee johtoja puhelimeesi yksi kerrallaan kuin avaimia. Neljäs sopii. ' + V(LX('“Keep it. Everybody leaves them.”')) + ' Pitelet sitä hetken ennen kuin panet sen taskuusi, kuin se olisi päätös.'); }, next: 'lind_lobby' },
       { label: 'Kysy, olisiko jotain syötävää.', time: 5, once: 'lind_desk_food', do: (G) => { G.flag('lind_food'); G.nerves(-2); G.note('Hän menee keittiöön ja palaa tarjottimen kanssa: leipää, voita, purkki skyriä. ' + V(LX('“Take it up. Breakfast is at seven. Proper breakfast.”')) + ' Kukaan ei ole vuorokauteen puhunut sinulle mistään kunnollisesta.'); }, next: 'lind_lobby' },
-      { label: 'Kysy, miten lentoasemalle pääsee takaisin.', dd: -3, time: 6, once: 'lind_desk_bus', do: (G) => { G.flag('know_flybus'); G.nerves(-3); G.msg('paper', { from: 'Vastaanotto, Hótel Lind', subj: 'Flybus-kortti', body: '<b>FLYBUS → KEF AIRPORT</b>\n\nFrom BSÍ terminal (10 min walk)\n\n06:00 · 07:00 · 08:00 · 09:00 · 10:00 · every hour\n\n<b>TICKET REQUIRED</b> — buy at the kiosk or online\n\n45 minutes.' }); G.note('Hän ei viittaa Islannin suuntaan. Hän kirjoittaa sen kortille: ' + V(LX('“Flybus. From BSÍ, where you came from. Ten minutes. Every hour from six. Buy the ticket first; the driver will not take you without.”')) + ' Hän katsoo sinua. ' + V(LX('“Not the other one. The yellow one.”')) + ' Et kysynyt mistään toisesta.'); }, next: 'lind_lobby' },
+      { label: 'Kysy, miten lentoasemalle pääsee takaisin.', dd: -3, time: 6, once: 'lind_desk_bus', do: (G) => { G.flag('know_flybus'); G.nerves(-3); G.msg('paper', { from: 'Vastaanotto, Hótel Lind', subj: 'Flybus-kortti', body: '<b>FLYBUS → KEF AIRPORT</b>\n\nFrom BSÍ terminal (10 min walk)\n\n06:00 · 07:00 · 08:00 · 09:00 · 10:00 · every hour\n\n<b>TICKET REQUIRED</b> — buy at the kiosk or online\n\n45 minutes.' }); G.note('Hän ei viittaa Islannin suuntaan. Hän kirjoittaa sen kortille: ' + V(LX('“Flybus. From BSÍ, where you came from. Ten minutes. Every hour from six. Buy the ticket first; the driver will not take you without one.”')) + ' Hän katsoo sinua. ' + V(LX('“Not the other one. The yellow one.”')) + ' Et kysynyt mistään toisesta.'); }, next: 'lind_lobby' },
       { label: 'Kysy, onko kukaan kysynyt sinua.', kind: 'comply', dd: 3, time: 4, do: (G) => { const n = G.count('lind_asked'); G.dread(1); G.note(G.t >= KNOCK_AT ? V(LX('“A man in a uniform. I told him we had nobody of that name. He said he would wait.”')) + ' Hän katsoo ovea. ' + V(LX('“I locked it.”')) : n === 1 ? V(LX('“Nobody. Nobody knows you are here.”')) + ' Hän sanoo sen lohdutukseksi, ja sitä se onkin, noin sekunnin ajan.' : V(LX('“Still nobody,”')) + ' hän sanoo, ennen kuin olet lopettanut, eikä nosta katsettaan, ja sitten nostaa.'); }, next: 'lind_lobby' },
-      { label: 'Istu keittiössä sen seurassa, joka sattuu olemaan hereillä.', whyNot: 'Ärähtäisit vieraalle ihmiselle.', nd: -4, dd: -2, nerveMax: 85, time: 10, once: 'lind_kitchen', do: (G) => { G.nerves(-3); G.dread(G.D >= 3 ? 3 : -1); G.note(G.D >= 3 ? 'Puhtaaseen paitaan pukeutunut mies syömässä paahtoleipää kello kaksi yöllä kuin se olisi järkevä kellonaika. ' + V('"Albion?"') + ' hän sanoo pirteästi. ' + V('"Tiistain. Me odotetaan kuljetusta. Se on vahvistettu."') + ' Hän näyttää sinulle puhelintaan. ' + ALLY(G) + ' on vahvistanut sen. Se vahvistaa sen joka aamu.' : 'Kaksi reppureissaajaa suunnittelemassa jäätikköä. He antavat sinulle keksin ja kysyvät lennosta ja sanovat ' + V('"ihan hullua"') + ' jokaisella oikealla hetkellä. Kymmenen minuutin ajan tunnet olevasi tarina, jota joku toinen kertoo.'); }, next: 'lind_lobby' },
+      { label: 'Istu keittiössä sen seurassa, joka sattuu olemaan hereillä.', whyNot: 'Ärähtäisit vieraalle ihmiselle.', nd: -4, dd: -2, nerveMax: 85, time: 10, once: 'lind_kitchen', do: (G) => { G.nerves(-3); G.dread(G.D >= 3 ? 3 : -1); G.note(G.D >= 3 ? 'Puhtaaseen paitaan pukeutunut mies syömässä paahtoleipää kello kolme yöllä kuin se olisi järkevä kellonaika. ' + V('"Albion?"') + ' hän sanoo pirteästi. ' + V('"Tiistain. Me odotetaan kuljetusta. Se on vahvistettu."') + ' Hän näyttää sinulle puhelintaan. ' + ALLY(G) + ' on vahvistanut sen. Se vahvistaa sen joka aamu.' : 'Kaksi reppureissaajaa suunnittelemassa jäätikköä. He antavat sinulle keksin ja kysyvät lennosta ja sanovat ' + V('"ihan hullua"') + ' jokaisella oikealla hetkellä. Kymmenen minuutin ajan tunnet olevasi tarina, jota joku toinen kertoo.'); }, next: 'lind_lobby' },
       { label: 'Pyydä häntä soittamaan Gunnarille. Mene sittenkin siihen toiseen hotelliin. Siihen oikeaan.', kind: 'comply', dd: 4, sub: 'Neljäkymmentä minuuttia. Taas se maksu.', if: (G) => G.t < T(1, 5, 30), time: 6, do: (G) => G.note(V(LX('“Hraun? You are sure?”')) + ' Hän soittaa silti, sanoo huoneesi numeron puhelimeen kuin salasanan, palaa pokkariinsa eikä katso sinua enää ennen kuin ajovalot näkyvät.'), next: 'lind_taxi_back' },
-      { label: 'Pyydä häntä avaamaan ovi. Käy haukkaamassa happea.', whyNot: 'Katu on väärä suunta.', dreadMax: 85, dd: -2, time: 3, do: (G) => G.note('Hän avaa oven sanaakaan sanomatta ja lukitsee sen uudelleen perässäsi, ja jää seisomaan lasin taakse pokkari kädessä, katsomaan, niin kuin katsotaan lasta puutarhassa.'), next: 'lind_street' },
+      { label: 'Pyydä häntä avaamaan ovi. Käy haukkaamassa happea.', whyNot: 'Ei sinne kadulle.', dreadMax: 85, dd: -2, time: 3, do: (G) => G.note('Hän avaa oven sanaakaan sanomatta ja lukitsee sen uudelleen perässäsi, ja jää seisomaan lasin taakse pokkari kädessä, katsomaan, niin kuin katsotaan lasta puutarhassa.'), next: 'lind_street' },
       { label: 'Takaisin ylös huoneeseen 7.', time: 2, next: 'lind_room' },
     ],
   };
@@ -1214,15 +1241,15 @@ CONTENTS.fi = (() => {
     loc: 'Laugavegur · Hótel Lindin edustalla',
     enter: (G) => {
       G.dread(1);
-      if (G.t >= KNOCK_AT && !G.has('knocked')) { G.go('lind_lobby_knock'); return; }
+      if (G.t >= KNOCK_AT && !G.has('knocked')) { G.flag('from_street'); G.go('lind_lobby_knock'); return; }
       if (G.t >= T(1, 6, 0)) { G.flag('allnighter'); G.go('lind_sleep'); return; }
-      if (G.once('lind_street_intro')) G.note(p(G.last(), 'Katu. Kylmä, mutta kaupungin kylmä, jossa on seiniä. Suljettuja baareja, leipomo, jonka valot ovat sammuksissa ja tuoksu yhä tallella, lyhty, pysäköityjä autoja kuurassa. Ei ketään. Sitten, kadun päässä, joku, kävelemässä toiseen suuntaan, kiireettä, mikä vaikuttaa säädyttömän suurelta onnelta.'));
+      if (G.once('lind_street_intro')) G.note(p(G.last(), 'Katu. Kylmä, mutta kaupungin kylmä, jossa on seiniä. Suljettuja baareja, leipomo, jonka valot ovat sammuksissa ja tuoksu yhä tallella, lyhty, pysäköityjä autoja kuurassa. Ei ketään. Sitten, kadun päässä, joku, kävelemässä toiseen suuntaan, kiireettä, ja jossain on ovi, joka on hänen omansa.'));
     },
-    text: (G) => p(`Katu. ${G.clock(G.t)}. Ovi takanasi on lukossa, ja hän on sen takana.` + (G.has('lind_car') ? ' Kadunreunassa, moottori käynnissä, musta auto, jonka ovessa on pieni kultainen vaakuna, se sähköpostin auto.' : ''), G.last(), G.amb('lind_street', LIND_AMB.street)),
+    text: (G) => p(`Katu. ${G.clock(G.t)}. Ovi takanasi on lukossa, ja hän on sen takana.` + (G.has('lind_car') ? (G.readMsg('car') ? ' Kadunreunassa, moottori käynnissä, musta auto, jonka ovessa on pieni kultainen vaakuna, se sähköpostin auto.' : ' Kadunreunassa, moottori käynnissä, musta auto, jonka ovessa on pieni kultainen vaakuna. Kukaan ei ole kertonut sinulle, mitä varten se on. Tai joku on, etkä sinä ole lukenut sitä.') : ''), G.last(), G.amb('lind_street', LIND_AMB.street)),
     choices: (G) => [
       { label: 'Kävele kulmaan. Katso mäkeä alas.', whyNot: 'Jalkasi eivät suostu.', nd: 3, dreadMax: 90, time: 6, do: (G) => { const d = G.D; G.dread(d >= 4 ? 3 : 1); G.nerves(d >= 4 ? 5 : 2); if (d >= 4) G.flag('coach_seen_street'); G.note(d >= 5 ? 'Mäen alla, missä katu levenee sataman suuntaan, bussi on pysäköity sen pään poikki, tummansininen, kultainen vaakuna, kaikki sisävalot palamassa. Sen ohi ei pääse muuten kuin sen läpi. Mies sen ovella, kädet ristissä, katsoo mäkeä ylös, sinua, kuin olisit myöhässä.' : d >= 4 ? 'Mäen alla, missä katu levenee, jotain pitkää ja tummaa moottori käynnissä, ja sen kyljessä lämpimän valon kaistale, joka on ikkunoita. Se on liian iso kadulle. Se on kadulla silti.' : 'Mäen alla katu avautuu satamaa kohti, ja satama on tummempaa pimeää, jonka toisella puolella palaa valoja. Taksi ajaa mäen alapään poikki kyltti valaistuna, menossa jonnekin muualle.'); }, next: 'lind_street' },
-      { label: 'Kävele alas sen luo.', kind: 'comply', if: (G) => G.has('coach_seen_street'), do: (G) => { G.flag('nc_lind'); G.end('nightcoach'); } },
-      { label: 'Auto kadunreunassa. Nouse kyytiin.', kind: 'comply', if: (G) => G.has('lind_car'), sub: 'Sen tabletissa on sinun nimesi.', do: (G) => G.end('accommodated') },
+      { label: 'Kävele alas sen luo.', kind: 'comply', if: (G) => G.has('coach_seen_street'), do: (G) => { G.flag('nc_lind'); G.flag('nc_street'); G.end('nightcoach'); } },
+      { label: 'Auto kadunreunassa. Se sähköpostin auto. Nouse kyytiin.', kind: 'comply', if: (G) => G.has('lind_car') && G.readMsg('car'), sub: 'Sen tabletissa on sinun nimesi.', do: (G) => G.end('accommodated') },
       { label: 'Katso ylös ikkunaasi.', time: 3, do: (G) => { G.dread(1); G.nerves(1); G.note(G.D >= 4 ? 'Toinen kerros, se pieni vinokaton alla. Valo palaa. Jätit sen palamaan. Verho on auki. Et jättänyt sitä auki.' : 'Toinen kerros, se pieni vinokaton alla. Valo palaa. Täältä alhaalta se näyttää huoneelta, jossa joku on turvassa.'); }, next: 'lind_street' },
       { label: 'Seiso lyhdyn alla ja hengitä.', nd: -3, dd: 1, time: 5, once: 'lind_breathe', do: (G) => { G.nerves(-4); G.dread(1); G.note('Kylmää ilmaa, kunnolla kylmää, ja taivas, jolla on yksi tähti, joka on luultavasti lentokone. Minuutin ajan olet ihminen, joka seisoo kadulla kaupungissa, eikä mikään odota sinua missään.'); }, next: 'lind_street' },
       { label: 'Koputa lasiin. Mene takaisin sisään.', time: 2, next: 'lind_lobby' },
@@ -1241,7 +1268,7 @@ CONTENTS.fi = (() => {
     choices: [
       { label: 'Lue ne. Kaikki.', kind: 'comply', dd: 2, time: 10, do: (G) => { G.openPhone('email'); G.note('Luet ne. Kaikki.'); }, next: 'lind_room' },
       { label: 'Käännä se näyttö alaspäin. Anna sen latautua. Älä lue niitä.', whyNot: 'Et pysty olemaan katsomatta.', dreadMax: 80, nd: 4, time: 5, do: (G) => { G.note('Lasket sen näyttö alaspäin lattialle pistorasian viereen, missä se jatkaa värinäänsä, vaimeasti, kuin jokin tyynyn alla.'); }, next: 'lind_room' },
-      { label: 'Vedä johto irti. Anna sen olla kuollut.', whyNot: 'Siinä on nyt sinun nimesi.', dreadMax: 70, dd: -4, time: 2, do: (G) => { G.S.phoneDead = true; G.S.batt = 0; G.flag('unplugged'); G.nerves(5); G.note('Vedät johdon irti. Näyttö pysyy sekunnin, punainen luku siinä, ja sammuu. Sen jälkeinen hiljaisuus on huoneen paras asia, etkä luota siihen.'); }, next: 'lind_room' },
+      { label: 'Vedä johto irti. Anna sen olla kuollut.', whyNot: 'Siinä on nyt sinun nimesi.', dreadMax: 70, instr: 'located', dd: -4, time: 2, do: (G) => { G.S.phoneDead = true; G.S.batt = 0; G.flag('unplugged'); G.nerves(5); G.note('Vedät johdon irti. Näyttö pysyy sekunnin, punainen luku siinä, ja sammuu. Sen jälkeinen hiljaisuus on huoneen paras asia, etkä luota siihen.'); }, next: 'lind_room' },
     ],
   };
 
@@ -1264,7 +1291,7 @@ CONTENTS.fi = (() => {
     loc: 'Gunnarin taksi · Tie 41 · kaupungista ulos',
     enter: (G) => { G.flag('left_lind'); G.flag('lind', false); G.S.t = Math.max(G.t + 40, T(1, 4, 10)); G.dread(6); G.nerves(4); },
     text: (G) => p(
-      'Gunnar, taas, radio hiljaisella. Hän ei kysy miksi. ' + V(LX('“Hraun. Yes. Everyone goes in the end.”')) + ' Hän ei kuulosta siltä, että hyväksyisi. Hän ei kuulosta siltäkään, että kieltäytyisi.',
+      'Gunnar, taas, radio hiljaisella. Hän ei kysy miksi. ' + V(LX('“Hraun. Yes. Everyone goes in the end.”')) + ' Hän ei kuulosta siltä, että hyväksyisi. Hän ajaa silti.',
       'Kaupunki loppuu. Laavaa matalan taivaan alla, tie, jonka yksi valkoinen viiva katoaa aina uudelleen. Kahdesti takaa nousee ajovaloja, jotka jäävät sinne, täsmälleen tarpeeksi kauas, ja sitten ne ovat poissa, ja se on pahempaa.',
       'Matalan, leveän, akvaarion lailla valaistun hotellin pihassa hän veloittaa maksun kortilta ja sanoo ' + V(LX('“Good luck,”')) + ' ja odottaa, valot päällä, kunnes olet sisällä.',
     ),
@@ -1281,10 +1308,10 @@ CONTENTS.fi = (() => {
       V('"Transfer sinun accommodation. Albion Atlantic. Lähtevä nyt."'),
       'Ääni on kärsivällinen. Ääni tietää huoneen numeron. Ääni sanoo sen, siltä varalta, että olisit unohtanut: ' + V('"Seitsemän."'),
     ),
-    choices: [
+    choices: (G) => [
       { label: 'Avaa ovi.', kind: 'comply', sub: 'Se on, loppujen lopuksi, sinun kuljetuksesi.', do: (G) => { G.flag('nc_lind'); G.end('nightcoach'); } },
-      { label: 'Älä. Hän sanoi, ettei kukaan kysynyt. Hän lukitsi oven.', whyNot: 'Et voi olla vastaamatta.', nd: 5, dreadMax: 80, time: 20, do: (G) => { G.nerves(5); G.note('Istuit sängyllä selkä seinää vasten ja laskit. Viidenkymmenen jälkeen menetit laskun. Kun se lakkasi, kukaan ei kuulunut laskeutuvan portaita.'); }, next: 'lind_window' },
-      { label: 'Katso ovisilmästä.', dd: 6, nd: 6, time: 2, do: (G) => { G.nerves(9); G.flag('spyhole'); G.note('Tasanne on tyhjä. Lankut ovesi edessä ovat tummat, kuin märät, talossa, jossa on puulattiat. Koputus jatkuu, tasaisena, eikä tule mistään erityisestä suunnasta.'); }, next: 'lind_knock2' },
+      { label: G.counted('lind_asked') ? 'Älä. Hän sanoi, ettei kukaan ollut kysynyt sinua.' : 'Älä. Kukaan ei varannut sinua tähän huoneeseen.', whyNot: 'Et voi olla vastaamatta. He käskivät olla valmiina.', nd: 5, dreadMax: 80, instr: 'knock_notice', time: 20, do: (G) => { G.nerves(5); G.note('Istuit sängyllä selkä seinää vasten ja laskit. Viidenkymmenen jälkeen menetit laskun. Kun se lakkasi, kukaan ei kuulunut laskeutuvan portaita.'); }, next: 'lind_window' },
+      { label: 'Katso ovisilmästä.', dd: 6, nd: 6, time: 2, do: (G) => { G.nerves(9); G.flag('spyhole'); G.note('Tasanne on tyhjä. Lankut ovesi edessä ovat tummat, kuin märät. Koputus jatkuu, tasaisena, eikä tule mistään erityisestä suunnasta.'); }, next: 'lind_knock2' },
       { label: 'Nosta huoneen puhelimen luuri. Kysy häneltä, kenet hän päästi sisään.', whyNot: 'Kätesi ei pysyisi luurissa.', nd: 4, nerveMax: 85, time: 4, do: (G) => { G.nerves(4); G.dread(4); G.note('Se soi kerran. ' + V(LX('“Seven? Yes. Nobody. I locked the door at midnight, I have been sitting here, nobody has come in.”')) + ' Tauko, jonka aikana kuulette molemmat koputuksen, puhelimen läpi ja oven läpi. ' + V(LX('“Don\'t open it. I am coming up.”')) + ' Kuulet hänet portaissa. Koputus ei lakkaa hänen vuokseen. Sitten se lakkaa, ja hän on ovesi takana, yksin, sanomassa hiljaa huoneesi numeroa, eikä tasanteella ole ketään muuta.'); }, next: 'lind_window' },
     ],
   };
@@ -1305,7 +1332,7 @@ CONTENTS.fi = (() => {
     enter: (G) => { G.flag('knocked'); atLeast(G, 62); G.nerves(6); },
     text: (G) => p(
       G.last(),
-      'Olet vastaanotossa, kun se alkaa. Yläkerrassa. Kaksi kerrosta ylempänä. Koputusta, tasaista ja kärsivällistä, oveen, ja virkailija katsoo kattoon, ja sitten ulko-oveen, joka on lukossa, ja sitten sinuun.',
+      G.has('from_street') ? 'Koputat lasiin, ja hän päästää sinut sisään ja kääntää avainta perässäsi, ja silloin se alkaa. Yläkerrassa. Kaksi kerrosta ylempänä. Koputusta, tasaista ja kärsivällistä, oveen, ja virkailija katsoo kattoon, ja sitten oveen, jonka juuri lukitsi, ja sitten sinuun.' : 'Olet vastaanotossa, kun se alkaa. Yläkerrassa. Kaksi kerrosta ylempänä. Koputusta, tasaista ja kärsivällistä, oveen, ja virkailija katsoo kattoon, ja sitten ulko-oveen, joka on lukossa, ja sitten sinuun.',
       V(LX('“That is seven,”')) + ' hän sanoo. ' + V(LX('“Nobody came in.”')),
       'Portaiden yläpäästä, porraskäytävää pitkin kantautuen, miellyttävään sävyyn: ' + V('"Transfer sinun accommodation. Lähtevä nyt."'),
     ),
@@ -1318,17 +1345,28 @@ CONTENTS.fi = (() => {
   scenes.lind_window = {
     art: 'street',
     loc: (G) => `Hótel Lind · Huone 7 · ${G.clock(G.t)}`,
-    enter: (G) => { G.S.t = Math.max(G.t, T(1, 4, 50)); if (!G.dead()) G.bot('Hei! Minä näen että sinä olet huone 7. Sinun transfer odottaa kadussa. Ole hyvä älä katso ulos ikkunasta. 🙂', 2); },
+    enter: (G) => { G.S.t = Math.max(G.t, T(1, 4, 50)); if (!G.dead()) G.bot('Hei! Minä näen että sinä olet huone 7. Sinun transfer odottaa kadussa. Ole hyvä älä katso ulos ikkunasta. 🙂', 2, 'nolook'); },
     text: (G) => p(
       G.last(),
       G.has('hid_lobby') ? 'Menit lopulta takaisin ylös. Tasanne oli tyhjä. Koputus on lakannut.' : 'Koputus on lakannut.',
-      G.dead() ? 'Puhelin on pimeänä lattialla pistorasian vieressä, ja se on melkein pahempaa: mitä ikinä he sanovat, he sanovat sen ei kenellekään.' : 'Puhelimesi valaisee vinokattoa. Viesti Allylta. ' + W('Sinun transfer odottaa kadussa. Ole hyvä älä katso ulos ikkunasta.'),
+      G.dead() ? 'Puhelin on pimeänä lattialla pistorasian vieressä, ja se on melkein pahempaa: mitä ikinä he sanovat, he sanovat sen ei kenellekään.' : 'Puhelimesi valaisee vinokattoa. ' + ALLY_MSG(G) + ' ' + (G.readMsg('nolook') ? W('Olet lukenut sen. Siinä kiellettiin katsomasta ulos ikkunasta.') : W('Et ole lukenut sitä.')),
       'Verho on ohut. Sen läpi tulee valoa alhaalta, ja valo liikkuu hieman, niin kuin käyvän moottorin valo liikkuu, kadulla, joka on liian kapea sille, mikä sitä käyttää.',
     ),
     choices: [
-      { label: 'Katso.', whyNot: 'He kielsivät.', dd: 10, nd: 8, dreadMax: 90, sub: 'Ihan vähän vain.', time: 5, do: (G) => { G.flag('seen'); G.flag('seen_lind'); G.flag('looked_out'); G.nerves(14); atLeast(G, 78); G.note('Bussi, tummansininen, kultainen vaakuna, täyttää kadun seinästä seinään. Moottori käy. Kaikki sisävalot palavat. Kaikki sisällä istuvat selkä suorana, kasvot majataloon päin. Ovella mies purserin univormussa, katse ylhäällä – ei rakennuksessa. Sinun ikkunassasi. Hän ei vilkuta. Hän on merkinnyt sen muistiin.'); }, next: 'lind_sleep' },
+      { label: 'Katso.', whyNot: 'He kielsivät.', dd: 10, nd: 8, dreadMax: 90, instr: 'nolook', sub: 'Ihan vähän vain.', time: 5, do: (G) => { G.flag('seen'); G.flag('seen_lind'); G.flag('looked_out'); G.nerves(14); atLeast(G, 78); }, next: 'lind_window2' },
       { label: 'Älä. Vedä peitto pään yli.', kind: 'comply', dd: 6, time: 5, do: (G) => G.nerves(2), next: 'lind_sleep' },
     ],
+  };
+
+  scenes.lind_window2 = {
+    art: 'street',
+    loc: (G) => `Hótel Lind · Huone 7 · ${G.clock(G.t)}`,
+    text: p(
+      'Bussi, tummansininen, kultainen vaakuna, täyttää kadun seinästä seinään, peilit kämmenen päässä seinistä kummallakin puolella. Moottori käy. Kaikki sisävalot palavat. Se on täynnä, ja kaikki istuvat selkä suorana, ja jokainen on kääntynyt majataloon päin.',
+      'Bussin ovella seisoo mies purserin univormussa. Sinun katsoessasi hän nostaa katseensa – ei rakennukseen. Sinun ikkunaasi. Vastapäisen lyhdyn alla virkailijan pokkari makaa jalkakäytävällä avoinna, kansi ylöspäin, eikä virkailija ole siellä.',
+      'Hän ei vilkuta. Ei tarvitse. Hän on, ymmärrät, pannut asian merkille.',
+    ),
+    choices: [{ label: 'Päästä irti verhosta.', time: 5, next: 'lind_sleep' }],
   };
 
   scenes.lind_sleep = {
@@ -1341,15 +1379,15 @@ CONTENTS.fi = (() => {
       if (G.has('lind_tp')) G.nerves(-4);
       if (G.dead()) { G.flag('lind_morning_cable'); if (G.once('flood')) lindFlood(G); G.charge(100); }
       G.at(T(1, 7, 35), 'sms', { from: 'Jo 💛', body: 'HERRANJUMALA OOTKO SÄ ISLANNISSA?? sun on pakko käydä blue lagoonissa. PAKKO. se on tyyliin 20 min kentältä' });
-      G.at(T(1, 8, 5), 'chat', { body: 'Hyvää huomenta! Sinun transfer Hótel Lind lentokentälle on vahvistettu 09:00. Ole hyvä odota lobbyssa. 🚌', dd: 1 });
-      G.at(T(1, 9, 40), 'email', { from: 'Albion Atlantic Customer Care', subj: 'Sinun transfer lentokentälle', stamp: T(1, 9, 40), body: 'Rakas Asiakas,\n\nBussit keräävät sinut sinun accommodation 09:00 sinun uudelleen bookattu lento AB 0271 varten.\n\nOle hyvä ole valmis lobbyssa 08:45.\n\nMe teemme meidän parasta.', dd: 2 });
+      G.at(T(1, 8, 5), 'chat', { body: 'Hyvää huomenta! Sinun transfer Hótel Lind lentokentälle on vahvistettu 09:00. Ole hyvä odota lobbyssa. 🚌', dd: 1, key: 'morning_chat' });
+      G.at(T(1, 9, 40), 'email', { from: 'Albion Atlantic Customer Care', subj: 'Sinun transfer lentokentälle', stamp: T(1, 9, 40), key: 'morning_mail', body: 'Rakas Asiakas,\n\nBussit keräävät sinut sinun accommodation 09:00 sinun uudelleen bookattu lento AB 0271 varten.\n\nOle hyvä ole valmis lobbyssa 08:45.\n\nMe teemme meidän parasta.', dd: 2 });
       G.at(T(1, 9, 55), 'chat', { body: 'Sinun transfer on täällä. Se on se kiva yksi. 🚌', dd: 1 });
     },
     text: (G) => p(
       G.has('allnighter') ? 'Harmaata valoa. 07:30. Et nukkunut, ja olet yhä Islannissa, majatalossa, jota lentoyhtiö ei koskaan varannut.' : 'Harmaata valoa. 07:30. Nukuit, tai jotain sinne päin, sängyssä, jota kukaan ei järjestänyt, ja olet yhä Islannissa.',
       'Aamiaiseksi on leipää, skyriä, munia ja kahvia, jonka joku on tarkoittanut. Kaksi reppureissaajaa suunnittelee jäätikköä. Ja ikkunan vieressä pitkässä pöydässä kahdeksan hengen seurue puhtaissa paidoissa ja puhtaissa sukissa, katsomassa puhelimiaan, nyökkäilemässä niille.',
       V('"Albion?"') + ' sanoo yksi heistä iloisesti nähdessään vaatteesi. ' + V('"Tiistain. Ja nuo kaksi on torstain. Me odotetaan kuljetusta. Se on vahvistettu."') + ' Hän kääntää puhelimensa sinuun päin. ' + ALLY(G) + ' on vahvistanut sen. Se on vahvistanut sen joka aamu. Kukaan pöydässä ei ole katsonut lähtevien lentojen taulua.',
-      G.has('lind_morning_cable') && 'Virkailija laskee pyytämättä johdon pöydälle lautasesi viereen. Puhelin palaa henkiin, ja ensimmäiseksi se kertoo sinulle kaiken, mistä jäit paitsi.',
+      G.has('lind_morning_cable') && (G.has('charger') ? 'Kytket puhelimen leivänpaahtimen viereiseen pistorasiaan, koska on aamu ja koska on pakko. Se palaa henkiin, ja ensimmäiseksi se kertoo sinulle kaiken, mistä jäit paitsi.' : 'Virkailija laskee pyytämättä johdon pöydälle lautasesi viereen. Puhelin palaa henkiin, ja ensimmäiseksi se kertoo sinulle kaiken, mistä jäit paitsi.'),
     ),
     choices: [{ label: 'Hae silti kahvi.', time: 10, next: 'lind_morning' }],
   };
@@ -1362,7 +1400,7 @@ CONTENTS.fi = (() => {
       if (G.once('lind_morn_intro')) G.note(p(G.last(), 'Albionin pöydällä on rytmi: puhelin, nyökkäys, kahvi, puhelin. Kenelläkään ei ole laukkua. Kenelläkään ei ole suunnitelmaa kuljetuksen jälkeen. Virkailija täyttää skyrkulhon niin kuin ruokkisi jotain, jonka on päättänyt pitää.'));
     },
     text: (G) => p(
-      `Aamiaishuone. ${G.clock(G.t)}. ${G.t >= T(1, 9, 45) ? 'Sähköpostissa luki 09:00, ja se tuli perille 09:40. ' : G.t >= T(1, 8, 5) ? 'Chattibotti sanoi 09:00, hotellista, jota se ei koskaan varannut. ' : ''}${G.has('know_flybus') ? 'Kortissa lukee, että Flybus lähtee BSÍ:ltä joka tunti.' : 'Kukaan täällä ei ole maininnut bussia.'}`,
+      `Aamiaishuone. ${G.clock(G.t)}. ${G.readMsg('morning_mail') ? 'Sähköpostissa luki 09:00, ja se tuli perille 09:40. ' : G.readMsg('morning_chat') ? 'Chattibotti lupasi kuljetuksen kello 09:00 hotellista, jota se ei koskaan varannut. ' : ''}${G.has('know_flybus') ? 'Kortissa lukee, että Flybus lähtee BSÍ:ltä joka tunti.' : 'Kukaan täällä ei ole maininnut bussia.'}`,
       G.last(), G.amb('lind_morning', LIND_AMB.morning)),
     choices: (G) => [
       { label: 'Kysy vastaanotosta, miten lentoasemalle pääsee takaisin.', dd: -3, time: 6, if: (G) => !G.has('know_flybus'), do: (G) => { G.flag('know_flybus'); G.nerves(-3); G.msg('paper', { from: 'Vastaanotto, Hótel Lind', subj: 'Flybus-kortti', body: '<b>FLYBUS → KEF AIRPORT</b>\n\nFrom BSÍ terminal (10 min walk)\n\n06:00 · 07:00 · 08:00 · 09:00 · 10:00 · every hour\n\n<b>TICKET REQUIRED</b> — buy at the kiosk or online\n\n45 minutes.' }); G.note('Hän kirjoittaa sen kortille. ' + V(LX('“Flybus. From BSÍ, where you came from. Ten minutes. Every hour. Buy the ticket first.”')) + ' Hän vilkaisee pitkää pöytää. ' + V(LX('“The yellow one. Not the other one.”'))); }, next: 'lind_morning' },
@@ -1370,7 +1408,7 @@ CONTENTS.fi = (() => {
       { label: 'Mene takaisin ylös. Suihkuun. Pese edes kasvosi.', whyNot: 'Et pysyisi paikallasi sen alla.', nerveMax: 92, time: 25, once: 'lind_morn_shower', do: (G) => { G.nerves(-5); G.dread(-2); G.note('Kuumaa vettä. Samat vaatteet. Päivänvalossa huone on mukava huone mukavassa majatalossa, ja katu ulkona on katu, jolla on leipomo eikä mitään pysäköitynä, minkä ei pitäisi olla.'); }, next: 'lind_morning' },
       { label: 'Tarkista lennon tilanne lentoyhtiön sivuilta.', dd: 3, nd: 3, time: 8, if: (G) => !G.dead(), do: (G) => { const n = G.count('status'); G.dread(2); G.batt(-1); G.note(n === 1 ? 'AB 0271 · KEF → LAX · 15:10 · AIKATAULUSSA. Sen alla, pienemmin kirjaimin: KULJETUKSESI ON VAHVISTETTU.' : 'AB 0271 · 15:10 · AIKATAULUSSA. Sivu tietää, missä hotellissa olet. Eilen se ei tiennyt.'); }, next: 'lind_morning' },
       { label: 'Mene kuumille lähteille. Olet aina halunnut sinne.', sub: 'Lentoasemalle on kaksikymmentä minuuttia. Kaikki sanovat niin.', do: (G) => G.end('tantalus') },
-      { label: 'Odota aulassa kuljetusta. Se on vahvistettu.', kind: 'comply', dd: 5, nd: 2, sub: 'Puoli tuntia tätä.', time: 30, do: (G) => { G.nerves(2); G.dread(3); G.note(G.pick(['Puoli tuntia. Albionin pöytä ei liikahda. Yksi heistä hakee kahvin ja palaa samalle tuolille, kuin se olisi hänelle osoitettu.', 'Puoli tuntia. Ulkona keltainen bussi ajaa kadun päässä ohi, eikä kukaan pitkässä pöydässä käännä päätään.', 'Puoli tuntia. Jokainen puhelin pitkässä pöydässä sanoo, yhtä aikaa, että kuljetus on tulossa, ja koko pöytä hymyilee yhtä aikaa.'])); }, next: 'lind_morning' },
+      { label: (G.readMsg('morning_chat') || G.readMsg('morning_mail')) ? 'Odota aulassa kuljetusta. Se on vahvistettu.' : 'Odota aulassa muiden kanssa.', kind: 'comply', dd: 5, nd: 2, sub: 'Puoli tuntia tätä.', time: 30, do: (G) => { G.nerves(2); G.dread(3); G.note(G.pick(['Puoli tuntia. Albionin pöytä ei liikahda. Yksi heistä hakee kahvin ja palaa samalle tuolille, kuin se olisi hänelle osoitettu.', 'Puoli tuntia. Ulkona keltainen bussi ajaa kadun päässä ohi, eikä kukaan pitkässä pöydässä käännä päätään.', 'Puoli tuntia. Jokainen puhelin pitkässä pöydässä sanoo, yhtä aikaa, että kuljetus on tulossa, ja koko pöytä hymyilee yhtä aikaa.'])); }, next: 'lind_morning' },
       { label: 'Kävele BSÍ:lle. Kymmenen minuuttia. Osta lippu siihen keltaiseen.', if: (G) => G.has('know_flybus'), dd: -2, time: 12, next: 'lind_buses' },
       { label: 'Kävele takaisin linja-autoasemalle ja katso, mitä siellä on.', if: (G) => !G.has('know_flybus'), time: 12, next: 'lind_buses' },
     ],
@@ -1433,7 +1471,7 @@ CONTENTS.fi = (() => {
       return G.shuffle([flybus, crest, lagoon]);
     },
     choices: [
-      { label: 'Odota seuraavaa. Aina tulee seuraava.', kind: 'comply', dd: 5, nd: 4, time: 60, next: (G) => (G.t >= T(1, 12, 30) ? 'end:arrangements' : 'lind_buses'), do: (G) => { G.nerves(5); G.dread(4); } },
+      { label: 'Odota seuraavaa. Aina tulee seuraava.', kind: 'comply', dd: 5, nd: 4, time: 60, next: (G) => (G.t >= T(1, 12, 30) ? 'end:noshow' : 'lind_buses'), do: (G) => { G.nerves(5); G.dread(4); } },
     ],
   };
 
@@ -1457,7 +1495,7 @@ CONTENTS.fi = (() => {
       art: 'terminal', title: 'TERMINAALI', kind: 'bad',
       hint: 'Aina joku kuuluttaa jotain.', blurb: 'Odotit kuulutusta.',
       text: p(
-        'Kukaan ei kuuluta mitään. Kukaan ei aikonutkaan. Kello 03:10 saapuvien hallin valot himmenevät neljäsosaan, ja sen jälkeen halli on hahmo, jonka pikemminkin muistat kuin näet.',
+        'Kukaan ei kuuluta mitään. Kukaan ei aikonutkaan. Kello 03:10 saapuvien hallin viimeisetkin valot sammuvat, ja sen jälkeen halli on hahmo, jonka pikemminkin muistat kuin näet.',
         'Puhelimessasi on yksi palkki kenttää ja uusi sähköposti. <em>Olemme järjestäneet teille bussikuljetuksen.</em> Siinä ei sanota minne. Eikä koskaan sanota.',
         'Aamulla siivoojat löytävät tarkastuskortin ja vievät sen löytötavaroihin. Täällä ollaan siinä suhteessa hyvin tunnollisia.',
       ),
@@ -1491,7 +1529,7 @@ CONTENTS.fi = (() => {
       art: 'corridor', title: 'YÖBUSSI', kind: 'bad',
       hint: 'Viimeinen kutsu.', blurb: 'Avasit koputtajalle.',
       text: (G) => p(
-        G.has('coach_seen_street') && G.S.scene !== 'lind_knock' ? 'Kävelet mäkeä alas. Mies ovella astuu syrjään sinua katsomatta. ' + V('"Lähtevä nyt",') + ' hän sanoo kadulle, ja se on ainoa koko yönä saamasi ohje, johon liittyi kellonaika, ja he tiesivät huoneen.' : G.has('nc_lind') ? 'Tasanne on tyhjä ja portaat ovat tyhjät ja ulko-ovi, jonka hän lukitsi, on auki kadulle. Kadulta: ' + V('"Lähtevä nyt."') + ' Seuraat sitä, koska se on ainoa koko yönä saamasi ohje, johon liittyi kellonaika, ja koska he tiesivät huoneen.' : G.has('nc_carpark') ? 'Kävelet bussin ovelle. Tummansiniseen pukeutunut mies astuu syrjään sinua katsomatta. ' + V('"Lähtevä nyt",') + ' hän sanoo hotellille, ja se on ainoa koko yönä saamasi ohje, johon liittyi kellonaika.' : G.has('nc_corridor') ? 'Hän lakkaa koputtamasta. Hän ei käänny. ' + V('"Lähtevä nyt",') + ' hän sanoo edessään olevalle ovelle ja kävelee porraskäytävään, ja sinä seuraat, koska se on ainoa koko yönä saamasi ohje, johon liittyi kellonaika.' : 'Käytävä on tyhjä ja kokolattiamatto märkä. Porraskäytävästä kuuluu: ' + V('"Lähtevä nyt."') + ' Seuraat ääntä, koska se on ainoa koko yönä saamasi ohje, johon liittyi kellonaika.',
+        G.has('nc_street') ? 'Kävelet mäkeä alas. Mies ovella astuu syrjään sinua katsomatta. ' + V('"Lähtevä nyt",') + ' hän sanoo kadulle, ja sinä menet, koska se on ainoa koko yönä saamasi ohje, johon liittyi kellonaika, ja koska he tiesivät huoneen.' : G.has('nc_lind') ? 'Tasanne on tyhjä ja portaat ovat tyhjät ja ulko-ovi, jonka hän lukitsi, on auki kadulle. Kadulta: ' + V('"Lähtevä nyt."') + ' Seuraat sitä, koska se on ainoa koko yönä saamasi ohje, johon liittyi kellonaika, ja koska he tiesivät huoneen.' : G.has('nc_carpark') ? 'Kävelet bussin ovelle. Tummansiniseen pukeutunut mies astuu syrjään sinua katsomatta. ' + V('"Lähtevä nyt",') + ' hän sanoo hotellille, ja se on ainoa koko yönä saamasi ohje, johon liittyi kellonaika.' : G.has('nc_corridor') ? 'Hän lakkaa koputtamasta. Hän ei käänny. ' + V('"Lähtevä nyt",') + ' hän sanoo edessään olevalle ovelle ja kävelee porraskäytävään, ja sinä seuraat, koska se on ainoa koko yönä saamasi ohje, johon liittyi kellonaika.' : 'Käytävä on tyhjä ja kokolattiamatto märkä. Porraskäytävästä kuuluu: ' + V('"Lähtevä nyt."') + ' Seuraat ääntä, koska se on ainoa koko yönä saamasi ohje, johon liittyi kellonaika.',
         G.has('nc_lind') ? 'Bussi täyttää kadun seinästä seinään, sisävalot päällä. Kaikki sisällä ovat jo kääntyneet majataloon päin. Sinulle on varattu paikka. Paikalla on itse asiassa pieni tulostettu kortti, jossa lukee nimesi, Arial-fontilla, ja sen alla, pienemmällä: <em>vaihtoehtoiset järjestelyt</em>.' : 'Bussi odottaa parkkipaikalla sisävalot päällä. Kaikki sisällä ovat jo kääntyneet hotelliin päin. Sinulle on varattu paikka. Paikalla on itse asiassa pieni tulostettu kortti, jossa lukee nimesi, Arial-fontilla.',
       ),
     },
@@ -1509,15 +1547,15 @@ CONTENTS.fi = (() => {
       text: (G) => p(
         G.has('toothpaste') ? 'Vesi on 38-asteista, taivas on käytetyn nenäliinan värinen, ja sinulla on jalassa 10-11:n sukat, kauneimmat sukat, jotka olet koskaan nähnyt, nyt täynnä rikkiä. Se on, objektiivisesti, kaunista.' : 'Vesi on 38-asteista, taivas on käytetyn nenäliinan värinen, ja sinulla on jalassasi lennolta jääneet sukat, koska muita sukkia sinulla ei ole. Se on, objektiivisesti katsoen, kaunista.',
         G.has('lind') ? 'Kello 09:00, 10:00 ja 11:00 keltaiset bussit lähtevät BSÍ:ltä ilman sinua, lipuilla, joita et ostanut. Kello 11:04 saapuu sähköposti, jonka mukaan kuljetuksesi lähti kello 09:00. Kello 11:05 chattibotti kysyy, viihdyitkö.' : 'Kello 11:00 bussi lähtee kolmenkymmenen kilometrin päässä olevan hotellin parkkipaikalta ilman sinua. Kello 11:04 saapuu sähköposti, jonka mukaan bussisi lähti kello 09:00. Kello 11:05 chatbot kysyy, viihdyitkö.',
-        'Kunpa et olisi pidellyt sitä apinankäpälää sanoessasi sen.',
+        'Kunpa et olisi pidellyt apinankäpälää, kun sanoit, että olet aina halunnut käydä Islannissa.',
       ),
     },
     noshow: {
       art: 'lobby', title: 'NO-SHOW', kind: 'bad',
       hint: 'Kyltissä luki 11:00.', blurb: 'Odotit täsmälleen kyltin ilmoittamaa aikaa.',
       text: (G) => p(
-        'Kello 11:30 mennessä kyltti on viety pois. Vastaanotossa ei muisteta, että sitä olisi koskaan laitettu. ' + V(LX('“Are you with the airline group? They\'ve gone.”')) + ' Hän sanoo sen ystävällisesti.',
-        'Aulan kahviautomaatista kuuluu ääni kuin jokin rykisi. Kun tarkistat, varaustasi ei löydy.',
+        G.has('lind') ? 'Puoli yhteen mennessä neljä keltaista bussia on tullut ja mennyt ovet avoinna, eikä se perimmäisellä laiturilla oleva ole liikahtanut. Mies sen ovella katsoo kelloaan, mitä hänen ei olisi tarvinnut tehdä. ' + V('"Lento matkustajat?"') + ' hän sanoo miellyttävään sävyyn. ' + V('"He ovat lähteneet pois."') : 'Kello 11:30 mennessä kyltti on viety pois. Vastaanotossa ei muisteta, että sitä olisi koskaan laitettu. ' + V(LX('“Are you with the airline group? They\'ve gone.”')) + ' Hän sanoo sen ystävällisesti.',
+        G.has('lind') ? 'Kioski myy korvapuusteja ihmisille, joilla on jokin paikka, minne mennä. Kun tarkistat, varaustasi ei löydy.' : 'Aulan kahviautomaatista kuuluu ääni kuin jokin rykisi. Kun tarkistat, varaustasi ei löydy.',
       ),
     },
     left: {
@@ -1540,7 +1578,7 @@ CONTENTS.fi = (() => {
       art: 'street', title: 'VAIHTOEHTOISET JÄRJESTELYT', kind: 'bad',
       hint: 'Se oli vahvistettu. Kaikki sanoivat niin.', blurb: 'Odotit kuljetusta hotellista, jota lentoyhtiö ei koskaan varannut.',
       text: (G) => p(
-        'Bussissa ei tuoksu mikään. Kaikilla kyydissä on hammastahnaa ja puhtaat sukat ja täysi akku, ja he nyökkäävät sinulle, kun kuljet ohi, koska olet nyt yksi heistä: tiistain, torstain, sinun. Virkailija seisoo oviaukossa pokkari rintaa vasten eikä vilkuta. Hän on nähnyt tämän ennenkin. Hän tuo skyrin esiin huomenna.',
+        'Bussissa ei tuoksu mikään. Kaikilla kyydissä on hammastahnaa ja puhtaat sukat ja täysi akku, ja he nyökkäävät sinulle, kun kuljet ohi, koska olet nyt yksi heistä: tiistain, torstain, ja nyt sinun. Virkailija seisoo oviaukossa pokkari rintaa vasten eikä vilkuta. Hän on nähnyt tämän ennenkin. Hän tuo skyrin esiin huomenna.',
         'Kaikkien puhelimissa yhtä aikaa: ' + ALLY(G) + ': ' + V('"Kiitos sinun kärsivällisyys. Sinun transfer on vahvistettu."') + ' Bussi ajaa BSÍ:n ohi, ohi keltaisen bussin, jonka ovi on auki, ohi lentoaseman risteyksen, ja jatkaa matkaa, laavan taakse, kohti hotellia, joka odottaa sinua.',
         'Olet vihdoin täsmälleen siellä, minne sinut oli järjestetty.',
       ),
@@ -1558,9 +1596,9 @@ CONTENTS.fi = (() => {
       art: 'plane', title: 'LHR–LAX:N ITSEHALLINNOLLINEN YHTEISÖ', kind: 'good',
       hint: 'Huhupuhe ei ole virallinen kanava.', blurb: 'Pääsit perille, ja niin pääsivät kaikki, joiden kanssa puhuit.',
       text: (G) => p(
-        'Portailla joku nauraa, ja sitten kaikki nauravat, eikä sateella ole väliä. Olette matkustaneet yhdessä yli kaksikymmentäkahdeksan tuntia. ' + (G.has('uk261') ? 'Sinulla on QR-koodi, fleecemies, ' : 'Sinulla on fleecemies, ') + (G.has('met31c') || G.has('ally31c') ? 'mies paikalta 31C, ' : '') + 'ja taapero, joka on nähnyt asioita.',
+        'Portailla joku nauraa, ja sitten kaikki nauravat, eikä sateella ole väliä. Olette matkustaneet yhdessä yli vuorokauden. ' + (G.has('uk261') ? 'Sinulla on QR-koodi, fleecemies, ' : 'Sinulla on fleecemies, ') + (G.has('met31c') || G.has('ally31c') ? 'mies paikalta 31C, ' : '') + 'ja taapero, joka on nähnyt asioita.',
         'Koko tämän koettelemuksen tarkimmat ja hyödyllisimmät tiedot tulivat Arial-fontilla tulostetuista papereista ja satunnaisilta matkustajilta, jotka välittivät huhupuheita. Kukaan univormuun pukeutunut ei pyytänyt kertaakaan anteeksi. Kävi ilmi, ettet tarvinnutkaan sitä.',
-        'Nähdään Los Angelesissa. LHR–LAX:n itsehallinnollisen yhteisön puolesta toivotat tehohoidossa olevalle miehelle pikaista paranemista.',
+        'Nähdään Los Angelesissa. LHR–LAX:n itsehallinnollisen yhteisön puolesta toivotat etumatkustamon asiakkaalle pikaista paranemista – hän on kuulemma tehohoidossa, erään lentoyhtiöllä työskentelevän serkun mukaan, eikä kukaan tiedä, kuinka luotettavaa se on.',
       ),
     },
   };
