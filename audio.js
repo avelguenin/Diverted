@@ -3,8 +3,9 @@
    Audio API from noise, a few oscillators and filters. Each scene key has its
    own soundscape (the cabin drone, the fluorescent hall, the wind at the coach
    stand, the heating in room 214), crossfaded on scene change; a handful of
-   one-shot cues (a phone buzz, a knock, a chime) are fired by the engine; and
-   dread adds a low drone underneath everything.
+   one-shot cues (a phone buzz, a knock, a chime) are fired by the engine;
+   dread adds a low drone underneath everything; and nerves add a pulse — a
+   heartbeat that is not there until it is, and then will not slow down.
 
    Browsers only allow sound after a user gesture, so nothing starts until the
    first click. A mute toggle in the top bar is remembered in localStorage. */
@@ -13,7 +14,8 @@
 const AUDIO = (() => {
   const LS = 'diverted.mute';
   let ctx = null, master = null, current = null, currentKey = null, dreadBus = null, dreadOsc = null, whine = null;
-  let muted = false, started = false, pendingKey = null, pendingDread = 0;
+  let nervesBus = null, nervesTier = 0, heartTimer = null;
+  let muted = false, started = false, pendingKey = null, pendingDread = 0, pendingNerves = 0;
   try { muted = localStorage.getItem(LS) === '1'; } catch (e) { /* ignore */ }
 
   /* ---------------------------------------------------------- toolkit */
@@ -100,6 +102,36 @@ const AUDIO = (() => {
     whine.gain.linearRampToValueAtTime(tier >= 5 ? 0.006 : 0, t + 2);
   }
 
+  /* ---------------------------------------------------------- nerves on top: percussion
+     A heartbeat, felt more than heard. Tiers 0–1: nothing. Tier 2: a slow
+     lub-dub, low in the mix. Tier 3: faster, with a dry tick between beats —
+     a nail on a tooth, a pen on a table. Tier 4: faster again, louder, and
+     wrong: beats stumble, double, or arrive early. The pulse never stops on
+     its own; only the gauge coming down slows it. */
+  function setNerves(tier) {
+    nervesTier = tier;
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    nervesBus.gain.cancelScheduledValues(t); nervesBus.gain.setValueAtTime(nervesBus.gain.value, t);
+    nervesBus.gain.linearRampToValueAtTime(tier <= 1 ? 0 : 1, t + 1.5);
+  }
+  function heartbeat() {
+    if (!ctx) return;
+    const tier = nervesTier;
+    let bpm = 54;
+    if (tier >= 2) {
+      const t = ctx.currentTime;
+      const vol = 0.14 + (tier - 2) * 0.07;
+      thud(t, 62, 0.12, vol, nervesBus);                 // lub
+      thud(t + 0.17, 52, 0.11, vol * 0.65, nervesBus);   // dub
+      if (tier >= 3 && Math.random() < 0.55) burst(t + 0.42, 0.012, 3400, 12, 0.035 + (tier - 3) * 0.02, nervesBus);   // the tick
+      if (tier >= 4 && Math.random() < 0.3) thud(t + 0.34, 62, 0.1, vol * 0.7, nervesBus);                            // a stumbled extra beat
+      bpm = 60 + (tier - 2) * 18;                         // 60, 78, 96
+      if (tier >= 4 && Math.random() < 0.25) bpm *= 1.6;  // and sometimes it runs
+    }
+    heartTimer = setTimeout(heartbeat, 60000 / bpm);
+  }
+
   /* ---------------------------------------------------------- public */
   function start() {
     if (started) return;
@@ -111,13 +143,15 @@ const AUDIO = (() => {
     dreadOsc = osc('sine', 40); dreadOsc.connect(dreadBus); dreadOsc.start();
     const d2 = osc('sine', 40.7); const g2 = gain(0.5); d2.connect(g2); g2.connect(dreadBus); d2.start();
     whine = gain(0); const w = osc('sine', 9000); w.connect(whine); whine.connect(master); w.start();
+    nervesBus = gain(0); const lp = filter('lowpass', 900, 0.7); nervesBus.connect(lp); lp.connect(master);
+    heartbeat();
     started = true;
-    if (pendingKey) scene(pendingKey, pendingDread);
+    if (pendingKey) scene(pendingKey, pendingDread, pendingNerves);
   }
-  function scene(key, dreadTier = 0) {
-    if (!started) { pendingKey = key; pendingDread = dreadTier; return; }
+  function scene(key, dreadTier = 0, nervesTier = 0) {
+    if (!started) { pendingKey = key; pendingDread = dreadTier; pendingNerves = nervesTier; return; }
     if (ctx.state === 'suspended') ctx.resume();
-    setDread(dreadTier);
+    setDread(dreadTier); setNerves(nervesTier);
     if (key === currentKey && current) return;
     if (current) current.stop(1.5);
     currentKey = key;
@@ -150,5 +184,5 @@ const AUDIO = (() => {
   document.addEventListener('pointerdown', kick, { passive: true });
   document.addEventListener('keydown', kick);
 
-  return { scene, event, toggle, isMuted, start };
+  return { scene, event, toggle, isMuted, start, tiers: () => ({ nerves: nervesTier, started }) };
 })();

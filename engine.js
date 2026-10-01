@@ -105,6 +105,8 @@ const Game = (() => {
     end: (id) => { pendingGo = 'end:' + id; },
     advance: (m) => advance(m),
     once: (k) => { if (S.once[k]) return false; S.once[k] = true; return true; },
+    // whether a `once` action (or G.once key) has already happened — for text that must not assume it
+    did: (k) => !!S.once[k],
     // dread, 0–100. It fills. G.D is its tier (0–6) for art, ambience and the page.
     dread: (n) => { S.dread = Math.max(0, Math.min(100, S.dread + n)); },
     get D() { return Math.min(6, Math.floor(S.dread / 16)); },
@@ -232,7 +234,7 @@ const Game = (() => {
     const root = $('#scene');
     root.innerHTML = '';
     const box = el('div', 'ending ' + (E.kind || 'bad'));
-    if (E.art) { const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); box.appendChild(cv); ART.scene(cv, E.art, G); AUDIO.scene(E.art, G.D); }
+    if (E.art) { const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); box.appendChild(cv); ART.scene(cv, E.art, G); AUDIO.scene(E.art, G.D, G.N); }
     AUDIO.event(E.kind === 'good' ? 'good' : 'end');
     box.appendChild(el('div', 'ending-kicker', E.kind === 'good' ? CONTENT.ui.madeIt : CONTENT.ui.gameOver));
     box.appendChild(el('div', 'ending-title', esc(E.title)));
@@ -267,7 +269,7 @@ const Game = (() => {
     if (sc.type === 'title') return renderTitle(root, sc);
     if (sc.type === 'gallery') return renderGallery(root);
 
-    if (sc.art) { const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); root.appendChild(cv); ART.scene(cv, sc.art, G); AUDIO.scene(sc.art, G.D); }
+    if (sc.art) { const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); root.appendChild(cv); ART.scene(cv, sc.art, G); AUDIO.scene(sc.art, G.D, G.N); }
     if (sc.loc) root.appendChild(el('div', 'loc', esc(typeof sc.loc === 'function' ? sc.loc(G) : sc.loc)));
     const txt = el('div', 'text');
     paragraphs(sc.text).forEach((p) => txt.appendChild(el('p', null, p)));
@@ -313,7 +315,7 @@ const Game = (() => {
   function renderTitle(root, sc) {
     if (titleTimer) { clearInterval(titleTimer); titleTimer = null; }
     const card = el('div', 'title-card');
-    const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); card.appendChild(cv); ART.scene(cv, 'terminal', G); AUDIO.scene('gate', 0);
+    const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); card.appendChild(cv); ART.scene(cv, 'terminal', G); AUDIO.scene('gate', 0, 0);
     card.appendChild(el('div', 'title-big', 'DIVERTED'));
     const sub = el('div', 'title-sub'); card.appendChild(sub);
     card.appendChild(el('pre', 'title-board', esc(sc.board)));

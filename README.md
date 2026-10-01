@@ -39,7 +39,7 @@ There is nothing to compile. Every file is served as-is; `index.html` loads `art
 |---|---|
 | `index.html` | The page skeleton: header with clock and meters, scene panel, phone panel. |
 | `style.css` | All visual design: pixel fonts, bevelled panels, dither, scanlines, vignette. Responsive; the phone becomes a bottom sheet under 900px. |
-| `audio.js` | Procedural sound: one Web Audio soundscape per scene, event cues (phone buzz, knock, chime), a dread drone, a mute toggle. No audio files. |
+| `audio.js` | Procedural sound: one Web Audio soundscape per scene, event cues (phone buzz, knock, chime), a dread drone, a nerves heartbeat, a mute toggle. No audio files. |
 | `art.js` | Procedural pixel art: a painter per scene (flickering vignettes) and a bus-portrait generator whose details are the tells. No image files. |
 | `engine.js` | The runner: scene graph, clock, scheduled messages, the two gauges and option gating, bus inspection, language switching, endings gallery (`localStorage`). No framework. |
 | `content.js` | Every word in the game (English): scenes, choices, messages, the chatbot's answers, buses, 12 endings, interface strings. This is the file to edit if you want to change the story. |
@@ -66,7 +66,7 @@ scenes.example = {
 };
 ```
 
-Choice fields: `kind` (`'conflict'` or `'comply'`, or none) picks the visual motif; `nd`/`dd` add to nerves/dread; `nerveMax`/`dreadMax` disable the option above that gauge value; `nerveMin`/`dreadMin` hide it below; `once` removes it after use. `G` is the small API the engine hands to content: `G.t` (clock, in minutes), `G.flag/has`, `G.nerves(±n)`, `G.dread(±n)`, `G.D` (dread tier 0–6), `G.note(text)` (the outcome shown by the next hub render), `G.amb(key, pool)`, `G.count(key)`, `G.strike()`, `G.collect(n)`, `G.msg(channel, {...})` for an immediate message, `G.at(absoluteMinute, channel, {...})` for a scheduled one, `G.bot(text)` for a chatbot line, `G.go(scene)`, `G.end(endingId)`, `G.once(key)`, `G.pick/shuffle` (seeded per run). Times are written with `T(day, hh, mm)`.
+Choice fields: `kind` (`'conflict'` or `'comply'`, or none) picks the visual motif; `nd`/`dd` add to nerves/dread; `nerveMax`/`dreadMax` disable the option above that gauge value; `nerveMin`/`dreadMin` hide it below; `once` removes it after use. `G` is the small API the engine hands to content: `G.t` (clock, in minutes), `G.flag/has`, `G.nerves(±n)`, `G.dread(±n)`, `G.D` (dread tier 0–6), `G.note(text)` (the outcome shown by the next hub render), `G.amb(key, pool)`, `G.count(key)`, `G.strike()`, `G.collect(n)`, `G.msg(channel, {...})` for an immediate message, `G.at(absoluteMinute, channel, {...})` for a scheduled one, `G.bot(text)` for a chatbot line, `G.go(scene)`, `G.end(endingId)`, `G.once(key)`, `G.did(key)` (whether a `once` action has already happened — use it so text never assumes something the player has not seen), `G.pick/shuffle` (seeded per run). Times are written with `T(day, hh, mm)`.
 
 Bus scenes add a `buses: (G) => [...]` generator; each bus has visible `look` details, `hidden` details revealed by *Look closer*, and an `art` spec (`livery`, `windows`, `passengers`, `sign`, `driver`, `ground`) that `art.js` paints. Scenes and endings take an `art` key naming a painter in `ART.keys`.
 
