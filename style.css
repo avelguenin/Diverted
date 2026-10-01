@@ -86,6 +86,10 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
 .pips-label, .meter-label, .count-label { margin-right: 4px; }
 .count-val { color: var(--ink); font-family: var(--term); font-size: 20px; }
 
+.mute { font-family: var(--term); font-size: 20px; color: var(--amber); border: 2px solid var(--edge); padding: 2px 10px; box-shadow: inset -2px -2px 0 var(--edge-dark); background: var(--bg-2); }
+.mute.off { color: var(--ink-faint); }
+.mute:hover { color: #fff; }
+
 /* ---------- scene ---------- */
 .scene { grid-area: scene; min-width: 0; }
 .vignette { width: 100%; max-width: 640px; aspect-ratio: 160 / 72; height: auto; border: 2px solid var(--edge); box-shadow: 0 0 0 2px var(--edge-dark), inset 0 0 40px rgba(0,0,0,.5); margin-bottom: 14px; background: #000; }
@@ -134,6 +138,8 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
 .bus { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
 .bus-art { width: 100%; aspect-ratio: 2 / 1; height: auto; border: 2px solid var(--edge-dark); background: #000; transition: transform .15s; }
 .bus.looked .bus-art { box-shadow: 0 0 0 2px var(--amber-dim); }
+.bus.business.looked .bus-art { transform: scale(1.06); }
+.bus.business { min-height: 0; }
 .bus-name { font-size: 20px; line-height: 1.2; }
 .bus-sign { font-size: 14px; padding: 4px 8px; display: inline-block; align-self: flex-start; }
 .bus-sign.led { background: #000; color: var(--amber); font-family: var(--pixel); font-size: 8px; letter-spacing: .1em; border: 2px solid var(--amber-dim); text-shadow: 0 0 4px var(--amber); }

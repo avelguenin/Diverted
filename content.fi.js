@@ -198,8 +198,9 @@ CONTENTS.fi = (() => {
   scenes.boarding = {
     art: 'gate',
     loc: 'Lontoo Heathrow · Matkustajasilta · Paikka 31B',
-    enter: (G) => { if (G.once('welcome_mail')) G.msg('email', { from: 'Albion Atlantic', subj: 'Tervetuloa lennolle AB 0271', body: 'Hyvä asiakas,\n\nTervetuloa Albion Atlanticin lennolle AB 0271 Los Angelesiin. Lentosi on aikataulussa.\n\nMatkustamohenkilökuntamme huolehtii turvallisuudestasi ja mukavuudestasi. Asiakkaidemme turvallisuus on kaikkein tärkeintä.\n\nMiellyttävää lentoa.' }); },
-    text: p(
+    enter: (G) => { if (G.once('welcome_mail')) G.msg('email', { from: 'Albion Atlantic', subj: 'Tervetuloa lennolle AB 0271', body: 'Hyvä asiakas,\n\nTervetuloa Albion Atlanticin lennolle AB 0271 Los Angelesiin. Lentosi on aikataulussa.\n\nMatkustamohenkilökuntamme huolehtii turvallisuudestasi ja mukavuudestasi. Asiakkaidemme turvallisuus on kaikkein tärkeintä.\n\nArvostettuna asiakkaana sinut kutsutaan hyväksymään maksuton korotus bisnesluokkaan tälle lennolle. Bisnesluokan asiakkaat nauttivat rauhallisemmasta matkustamosta, ja heidän luotetaan löytävän oman tiensä.\n\nMiellyttävää lentoa.', actions: [{ label: 'Hyväksy maksuton korotus', if: (G) => !G.has('business') && !G.has('at_hotel'), do: (G) => { G.flag('business'); G.nerves(-2); G.dread(4); G.note('Hyväksyit korotuksen. Istuimesi ei muuttunut mitenkään. Lentoemäntä toi lämpimän pyyhkeen, ja ohi kulkeva purseri sanoi ' + V('"Bisnes",') + ' itsekseen, ja teki pienen merkinnän.'); } }] }); },
+    text: (G) => p(
+      G.last(),
       'Matkustajasillassa tuoksuu kerosiini ja kokolattiamatto. Koneen ovella purseri: pitkä, ohimoilta harmaantunut, hymy silitetty samalla kertaa kuin paita. Hän ei katso tarkastuskortteja. Hän katsoo kasvoja, yksi kerrallaan, ja sanoo ' + V('"Tervetuloa lennolle"') + ' jokaiselle heistä, ikään kuin hänen täytyisi painaa se mieleensä.',
       'Rivi 31. Käytäväpaikka, 31B. Paikalla 31C suunnilleen sinun ikäisesi mies ja pokkari, jota hän on jo lakannut lukemasta. Hän nyökkää. Sinä nyökkäät. Siinä koko keskustelu, eikä siihen tule lisää vähään aikaan.',
       'Jossain takanasi kaksivuotiaalle kerrotaan kärsivällisesti, että kone ei lähde vielä. Kone ei lähde vielä.',
@@ -1040,16 +1041,16 @@ CONTENTS.fi = (() => {
     lift: {
       art: 'corridor', title: 'HISSI', kind: 'bad',
       hint: 'Epäkunnossa, Arial-fontilla.', blurb: 'Astuit hissiin, joka tuli kutsumatta.',
-      text: p(
-        'Ovet sulkeutuvat hyvän hotellin kohteliaisuudella. Takaseinän peilistä näet itsesi: lentovaatteet, kasvot, pienen 10-11:n pussin, jos sellainen sinulla on. Hissi laskeutuu. Se laskeutuu pidempään kuin rakennuksessa on kerroksia.',
+      text: (G) => p(
+        G.has('toothpaste') ? 'Ovet sulkeutuvat hyvän hotellin kohteliaisuudella. Peräseinän peili näyttää sinut: lentokonevaatteet, kasvot, 10-11:n pienen pussin rintaasi vasten puristettuna. Hissi laskeutuu. Se laskeutuu pidempään kuin rakennuksessa on kerroksia.' : 'Ovet sulkeutuvat hyvän hotellin kohteliaisuudella. Peräseinän peili näyttää sinut: lentokonevaatteet, kasvot, tyhjät kädet. Hissi laskeutuu. Se laskeutuu pidempään kuin rakennuksessa on kerroksia.',
         'Kun ovet aukeavat, edessä on lämmintä valoa ja istuinrivejä, ja kaikki niillä istuvat kääntyvät katsomaan sinua ja hymyilevät, ja purseri sanoo: ' + V('"Kiitos kärsivällisyydestäsi",') + ' ja tarkoittaa sitä.',
       ),
     },
     tantalus: {
       art: 'carpark', title: 'TANTALOS', kind: 'bad',
       hint: 'Olet aina halunnut käydä Islannissa.', blurb: 'Menit kuumille lähteille.',
-      text: p(
-        'Vesi on 38-asteista, taivas on käytetyn nenäliinan värinen, ja sinulla on jalassasi lennolta jääneet sukat, koska muita sukkia sinulla ei ole. Se on, objektiivisesti katsoen, kaunista.',
+      text: (G) => p(
+        G.has('toothpaste') ? 'Vesi on 38-asteista, taivas on käytetyn nenäliinan värinen, ja sinulla on jalassa 10-11:n sukat, kauneimmat sukat, jotka olet koskaan nähnyt, nyt täynnä rikkiä. Se on, objektiivisesti, kaunista.' : 'Vesi on 38-asteista, taivas on käytetyn nenäliinan värinen, ja sinulla on jalassasi lennolta jääneet sukat, koska muita sukkia sinulla ei ole. Se on, objektiivisesti katsoen, kaunista.',
         'Kello 11:00 bussi lähtee kolmenkymmenen kilometrin päässä olevan hotellin parkkipaikalta ilman sinua. Kello 11:04 saapuu sähköposti, jonka mukaan bussisi lähti kello 09:00. Kello 11:05 chatbot kysyy, viihdyitkö.',
         'Kunpa et olisi pidellyt sitä apinankäpälää sanoessasi sen.',
       ),
@@ -1090,8 +1091,8 @@ CONTENTS.fi = (() => {
     collective: {
       art: 'plane', title: 'LHR–LAX:N ITSEHALLINNOLLINEN YHTEISÖ', kind: 'good',
       hint: 'Huhupuhe ei ole virallinen kanava.', blurb: 'Pääsit perille, ja niin pääsivät kaikki, joiden kanssa puhuit.',
-      text: p(
-        'Portailla joku nauraa, ja sitten nauravat kaikki, eikä sateella ole enää väliä. Olette matkustaneet yhdessä yli kaksikymmentäkahdeksan tuntia. Sinulla on QR-koodi, fleecemies, mies paikalta 31C ja taapero, joka on nähnyt yhtä sun toista.',
+      text: (G) => p(
+        'Portailla joku nauraa, ja sitten kaikki nauravat, eikä sateella ole väliä. Olette matkustaneet yhdessä yli kaksikymmentäkahdeksan tuntia. ' + (G.has('uk261') ? 'Sinulla on QR-koodi, fleecemies, ' : 'Sinulla on fleecemies, ') + (G.has('met31c') || G.has('ally31c') ? 'mies paikalta 31C, ' : '') + 'ja taapero, joka on nähnyt asioita.',
         'Koko tämän koettelemuksen tarkimmat ja hyödyllisimmät tiedot tulivat Arial-fontilla tulostetuista papereista ja satunnaisilta matkustajilta, jotka välittivät huhupuheita. Kukaan univormuun pukeutunut ei pyytänyt kertaakaan anteeksi. Kävi ilmi, ettet tarvinnutkaan sitä.',
         'Nähdään Los Angelesissa. LHR–LAX:n itsehallinnollisen yhteisön puolesta toivotat tehohoidossa olevalle miehelle pikaista paranemista.',
       ),

@@ -198,8 +198,9 @@ CONTENTS.fr = (() => {
   scenes.boarding = {
     art: 'gate',
     loc: 'Londres Heathrow · Passerelle · Siège 31B',
-    enter: (G) => { if (G.once('welcome_mail')) G.msg('email', { from: 'Albion Atlantic', subj: 'Bienvenue à bord AB 0271', body: 'Cher Client,\n\nBienvenue à bord vol Albion Atlantic AB 0271 à Los Angeles. Votre vol est à temps.\n\nNotre équipage de cabine est ici pour assurer votre sécurité et confort. La sécurité de nos clients est tantamount.\n\nAppréciez votre vol.' }); },
-    text: p(
+    enter: (G) => { if (G.once('welcome_mail')) G.msg('email', { from: 'Albion Atlantic', subj: 'Bienvenue à bord AB 0271', body: 'Cher Client,\n\nBienvenue à bord vol Albion Atlantic AB 0271 à Los Angeles. Votre vol est à temps.\n\nNotre équipage de cabine est ici pour assurer votre sécurité et confort. La sécurité de nos clients est tantamount.\n\nComme client valorisé vous êtes invité à accepter une mise à niveau complimentaire en Classe Affaires pour ce vol. Les clients Classe Affaires apprécient une cabine plus calme et sont confiés de trouver leur propre chemin.\n\nAppréciez votre vol.', actions: [{ label: 'Accepter la mise à niveau complimentaire', if: (G) => !G.has('business') && !G.has('at_hotel'), do: (G) => { G.flag('business'); G.nerves(-2); G.dread(4); G.note('Vous avez accepté le surclassement. Rien n\'a changé pour votre siège. Une hôtesse vous a apporté une serviette chaude, et le chef de cabine, en passant, a dit ' + V('« Affaires, »') + ' pour lui-même, et a fait une petite marque.'); } }] }); },
+    text: (G) => p(
+      G.last(),
       'La passerelle sent le kérosène et la moquette. À la porte de l\'avion, le chef de cabine : grand, les tempes argentées, un sourire repassé avec la chemise. Il ne regarde pas les cartes d\'embarquement. Il regarde les visages, un par un, et dit ' + V('« Bienvenue à bord »') + ' à chacun, comme s\'il allait devoir s\'en souvenir.',
       'Rang 31. Un siège couloir, le 31B. En 31C, un homme à peu près de votre âge, avec un livre de poche qu\'il a déjà cessé de lire. Il vous salue d\'un signe de tête. Vous faites de même. C\'est toute la conversation, et ça le restera un moment.',
       'Quelque part derrière vous, on explique patiemment à un enfant de deux ans que l\'avion ne part pas encore. L\'avion ne part pas encore.',
@@ -1040,16 +1041,16 @@ CONTENTS.fr = (() => {
     lift: {
       art: 'corridor', title: 'L\'ASCENSEUR', kind: 'bad',
       hint: 'Hors service, en Arial.', blurb: 'Vous êtes entré dans l\'ascenseur qui est arrivé tout seul.',
-      text: p(
-        'Les portes se ferment avec la courtoisie d\'un bon hôtel. Le miroir du fond vous renvoie : les vêtements du vol, le visage, le petit sac du 10-11 si vous l\'avez. L\'ascenseur descend. Il descend plus longtemps que le bâtiment n\'a d\'étages.',
+      text: (G) => p(
+        G.has('toothpaste') ? 'Les portes se ferment avec la courtoisie d\'un bon hôtel. Le miroir du fond vous montre : les vêtements d\'avion, le visage, le petit sac du 10-11 serré contre la poitrine. L\'ascenseur descend. Il descend plus longtemps que le bâtiment n\'a d\'étages.' : 'Les portes se ferment avec la courtoisie d\'un bon hôtel. Le miroir du fond vous montre : les vêtements d\'avion, le visage, les mains vides. L\'ascenseur descend. Il descend plus longtemps que le bâtiment n\'a d\'étages.',
         'Quand les portes s\'ouvrent, c\'est sur une lumière chaude et des rangées de sièges, et tous ceux qui y sont assis se tournent vers vous, et sourient, et le chef de cabine dit : ' + V('« Merci pour votre patience, »') + ' et il le pense.',
       ),
     },
     tantalus: {
       art: 'carpark', title: 'TANTALE', kind: 'bad',
       hint: 'Vous avez toujours voulu visiter l\'Islande.', blurb: 'Vous êtes allé aux sources chaudes.',
-      text: p(
-        'L\'eau est à 38 °C, le ciel a la couleur d\'un mouchoir usagé et vous portez les chaussettes du vol parce que vous n\'avez pas d\'autres chaussettes. C\'est, objectivement, magnifique.',
+      text: (G) => p(
+        G.has('toothpaste') ? 'L\'eau est à 38 °C, le ciel a la couleur d\'un mouchoir usagé et vous portez les chaussettes du 10-11, les plus belles chaussettes que vous ayez jamais vues, désormais pleines de soufre. C\'est, objectivement, magnifique.' : 'L\'eau est à 38 °C, le ciel a la couleur d\'un mouchoir usagé et vous portez les chaussettes du vol parce que vous n\'avez pas d\'autres chaussettes. C\'est, objectivement, magnifique.',
         'À 11h00, un bus quitte le parking d\'un hôtel à trente kilomètres de là, sans vous. À 11h04, un mail arrive pour dire que votre car est parti à 09h00. À 11h05, le chatbot demande si vous avez apprécié votre séjour.',
         'Dommage que vous ayez tenu cette patte de singe en le disant.',
       ),
@@ -1090,8 +1091,8 @@ CONTENTS.fr = (() => {
     collective: {
       art: 'plane', title: 'LE COLLECTIF AUTOGÉRÉ DE LHR–LAX', kind: 'good',
       hint: 'Le ouï-dire n\'est pas un canal officiel.', blurb: 'Vous y êtes arrivé, et tous ceux à qui vous avez parlé aussi.',
-      text: p(
-        'Sur les marches, quelqu\'un rit, puis tout le monde, et la pluie ne compte plus. Vous voyagez ensemble depuis plus de vingt-huit heures. Vous avez un QR code, un homme en polaire, un homme du 31C, et un bambin qui a vu des choses.',
+      text: (G) => p(
+        'Sur l\'escalier, quelqu\'un rit, puis tout le monde, et la pluie n\'a plus d\'importance. Vous voyagez ensemble depuis plus de vingt-huit heures. ' + (G.has('uk261') ? 'Vous avez un QR code, un homme en polaire, ' : 'Vous avez un homme en polaire, ') + (G.has('met31c') || G.has('ally31c') ? 'un homme du 31C, ' : '') + 'et un enfant qui a vu des choses.',
         'Les informations les plus exactes et les plus utiles de toute cette épreuve sont venues de feuilles imprimées en Arial et de passagers inconnus colportant des ouï-dire. Personne en uniforme ne s\'est jamais excusé. Il s\'avère que vous n\'en aviez pas besoin.',
         'À bientôt à Los Angeles. Au nom du collectif autogéré de LHR–LAX, vous souhaitez bon rétablissement à l\'homme en soins intensifs.',
       ),

@@ -93,14 +93,14 @@ const Game = (() => {
     flag: (k, v = true) => { S.flags[k] = v; },
     has: (k) => !!S.flags[k],
     nerves: (d) => { S.nerves = Math.max(0, Math.min(100, S.nerves + d)); },
-    strike: () => { S.strikes += 1; S.nerves = Math.min(100, S.nerves + 4); toast(CONTENT.ui.tNoted); },
+    strike: () => { S.strikes += 1; S.nerves = Math.min(100, S.nerves + 4); toast(CONTENT.ui.tNoted); AUDIO.event('noted'); },
     collect: (n = 1) => { S.collective += n; },
     // immediate message. ch: email | sms | paper. Chat uses G.bot.
     msg: (ch, m) => deliver(Object.assign({ ch }, m)),
     // scheduled message at absolute minute `at`; fx runs on delivery.
     at: (at, ch, m) => { S.sched.push(Object.assign({ at, ch }, m)); S.sched.sort((a, b) => a.at - b.at); },
     // bot-initiated chat line
-    bot: (text) => { S.chat.push({ who: 'bot', text, read: false, t: S.t }); toast(CONTENT.ui.tAlly + ' · ' + text.slice(0, 60) + (text.length > 60 ? '…' : '')); },
+    bot: (text) => { S.chat.push({ who: 'bot', text, read: false, t: S.t }); AUDIO.event('buzz'); toast(CONTENT.ui.tAlly + ' · ' + text.slice(0, 60) + (text.length > 60 ? '…' : '')); },
     go: (id) => { pendingGo = id; },
     end: (id) => { pendingGo = 'end:' + id; },
     advance: (m) => advance(m),
@@ -150,6 +150,7 @@ const Game = (() => {
     if (m.fx) { const fx = m.fx; delete m.fx; fx(G); }
     const label = { email: CONTENT.ui.tMail, sms: CONTENT.ui.tSms, paper: CONTENT.ui.tPaper }[m.ch] || m.ch.toUpperCase();
     toast(`${label} · ${m.subj || m.from || ''}`);
+    AUDIO.event('buzz');
   }
 
   function advance(min) {
@@ -157,7 +158,7 @@ const Game = (() => {
     while (S.sched.length && S.sched[0].at <= target) {
       const m = S.sched.shift();
       S.t = Math.max(S.t, m.at);
-      if (m.ch === 'chat') { S.chat.push({ who: 'bot', text: m.body, read: false, t: S.t }); toast(CONTENT.ui.tAlly + ' · ' + m.body.slice(0, 60)); if (m.fx) m.fx(G); }
+      if (m.ch === 'chat') { S.chat.push({ who: 'bot', text: m.body, read: false, t: S.t }); AUDIO.event('buzz'); toast(CONTENT.ui.tAlly + ' · ' + m.body.slice(0, 60)); if (m.fx) m.fx(G); }
       else deliver(m);
     }
     // drift: hours awake fray the nerves; the small hours feed the dread
@@ -193,6 +194,8 @@ const Game = (() => {
     const sc = id === 'lane' ? LANE : CONTENT.scenes[id];
     if (!sc) { console.error('missing scene', id); return; }
     S.scene = id;
+    if (id === 'knock' || id === 'knock2' || id === 'corridor_knock') AUDIO.event('knock');
+    if (id === 'cabin' || id === 'takeoff') AUDIO.event('chime');
     if (sc.enter) {
       sc.enter(G);
       const fatal = check();
@@ -229,7 +232,8 @@ const Game = (() => {
     const root = $('#scene');
     root.innerHTML = '';
     const box = el('div', 'ending ' + (E.kind || 'bad'));
-    if (E.art) { const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); box.appendChild(cv); ART.scene(cv, E.art, G); }
+    if (E.art) { const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); box.appendChild(cv); ART.scene(cv, E.art, G); AUDIO.scene(E.art, G.D); }
+    AUDIO.event(E.kind === 'good' ? 'good' : 'end');
     box.appendChild(el('div', 'ending-kicker', E.kind === 'good' ? CONTENT.ui.madeIt : CONTENT.ui.gameOver));
     box.appendChild(el('div', 'ending-title', esc(E.title)));
     const txt = el('div', 'text');
@@ -263,7 +267,7 @@ const Game = (() => {
     if (sc.type === 'title') return renderTitle(root, sc);
     if (sc.type === 'gallery') return renderGallery(root);
 
-    if (sc.art) { const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); root.appendChild(cv); ART.scene(cv, sc.art, G); }
+    if (sc.art) { const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); root.appendChild(cv); ART.scene(cv, sc.art, G); AUDIO.scene(sc.art, G.D); }
     if (sc.loc) root.appendChild(el('div', 'loc', esc(typeof sc.loc === 'function' ? sc.loc(G) : sc.loc)));
     const txt = el('div', 'text');
     paragraphs(sc.text).forEach((p) => txt.appendChild(el('p', null, p)));
@@ -309,7 +313,7 @@ const Game = (() => {
   function renderTitle(root, sc) {
     if (titleTimer) { clearInterval(titleTimer); titleTimer = null; }
     const card = el('div', 'title-card');
-    const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); card.appendChild(cv); ART.scene(cv, 'terminal', G);
+    const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); card.appendChild(cv); ART.scene(cv, 'terminal', G); AUDIO.scene('gate', 0);
     card.appendChild(el('div', 'title-big', 'DIVERTED'));
     const sub = el('div', 'title-sub'); card.appendChild(sub);
     card.appendChild(el('pre', 'title-board', esc(sc.board)));
@@ -331,14 +335,14 @@ const Game = (() => {
       b1.textContent = U.start;
       b2.textContent = U.howto; b2.onclick = () => { setLang(code); show('howto'); };
       b3.textContent = `${U.endings} (${unlocked().length}/${Object.keys(C.endings).length})`; b3.onclick = () => { setLang(code); show('gallery'); };
-      b4.textContent = U.design;
+      b4.textContent = U.design; b4.href = 'design.html#' + code;
     };
     paint(false);
     if (!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
       titleTimer = setInterval(() => {
         if (!card.isConnected || S.scene !== 'title') { clearInterval(titleTimer); titleTimer = null; return; }
         code = LANGS[(LANGS.indexOf(code) + 1) % LANGS.length];
-        paint(true);
+        paint(true); AUDIO.event('flip');
       }, 4500);
     }
     renderStatus();
@@ -371,14 +375,17 @@ const Game = (() => {
     const grid = el('div', 'buses');
     buses.forEach((b) => {
       const key = S.scene + ':' + b.key;
-      const card = el('div', 'bus' + (S.looked[key] ? ' looked' : ''));
-      if (b.art) { const cv = el('canvas', 'bus-art'); cv.setAttribute('aria-hidden', 'true'); card.appendChild(cv); ART.bus(cv, b.art, S.seed + b.key.length * 31 + (S.looked[key] ? 1 : 0)); }
-      card.appendChild(el('div', 'bus-name', esc(b.name)));
-      card.appendChild(el('div', 'bus-sign ' + (b.signStyle || 'window'), esc(b.sign)));
-      const ul = el('ul');
-      b.look.forEach((d) => ul.appendChild(el('li', null, esc(d))));
-      if (S.looked[key]) b.hidden.forEach((d) => ul.appendChild(el('li', 'hidden-detail', esc(d))));
-      card.appendChild(ul);
+      const business = !!S.flags.business; // Business Class: the pictures are all you get
+      const card = el('div', 'bus' + (S.looked[key] ? ' looked' : '') + (business ? ' business' : ''));
+      if (b.art) { const cv = el('canvas', 'bus-art'); cv.setAttribute('aria-hidden', business ? 'false' : 'true'); card.appendChild(cv); ART.bus(cv, b.art, S.seed + b.key.length * 31 + (S.looked[key] ? 1 : 0)); }
+      if (!business) {
+        card.appendChild(el('div', 'bus-name', esc(b.name)));
+        card.appendChild(el('div', 'bus-sign ' + (b.signStyle || 'window'), esc(b.sign)));
+        const ul = el('ul');
+        b.look.forEach((d) => ul.appendChild(el('li', null, esc(d))));
+        if (S.looked[key]) b.hidden.forEach((d) => ul.appendChild(el('li', 'hidden-detail', esc(d))));
+        card.appendChild(ul);
+      }
       const act = el('div', 'bus-actions');
       if (!S.looked[key]) {
         const lk = el('button', null, CONTENT.ui.look); lk.title = CONTENT.ui.lookHint;
@@ -537,6 +544,8 @@ const Game = (() => {
   function init() {
     document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => { ui.tab = t.dataset.tab; ui.open = null; renderPhone(); }));
     $('#phone-toggle').addEventListener('click', () => { ui.phoneOpen = !ui.phoneOpen; $('#phone').classList.toggle('open', ui.phoneOpen); });
+    const mute = $('#mute'); const paintMute = () => { mute.textContent = AUDIO.isMuted() ? '♪ ×' : '♪'; mute.classList.toggle('off', AUDIO.isMuted()); }; paintMute();
+    mute.addEventListener('click', () => { AUDIO.start(); AUDIO.toggle(); paintMute(); });
     if (!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) setInterval(glitchClock, 900);
     start();
   }

@@ -198,8 +198,9 @@ CONTENTS.is = (() => {
   scenes.boarding = {
     art: 'gate',
     loc: 'London Heathrow · Landgangur · Sæti 31B',
-    enter: (G) => { if (G.once('welcome_mail')) G.msg('email', { from: 'Albion Atlantic', subj: 'Velkomin um borð AB 0271', body: 'Kæri Viðskiptavinur,\n\nVelkomin um borð Albion Atlantic flug AB 0271 til Los Angeles. Flug þitt er á tíma.\n\nÁhöfn okkar er hér til að tryggja öryggi þitt og þægindi. Öryggi viðskiptavina okkar er tantamount.\n\nNjóttu flugs þíns.' }); },
-    text: p(
+    enter: (G) => { if (G.once('welcome_mail')) G.msg('email', { from: 'Albion Atlantic', subj: 'Velkomin um borð AB 0271', body: 'Kæri Viðskiptavinur,\n\nVelkomin um borð Albion Atlantic flug AB 0271 til Los Angeles. Flug þitt er á tíma.\n\nÁhöfn okkar er hér til að tryggja öryggi þitt og þægindi. Öryggi viðskiptavina okkar er tantamount.\n\nSem metinn viðskiptavinur ert þú boðinn að þiggja ókeypis uppfærslu í Viðskiptafarrými fyrir þetta flug. Viðskiptafarrými viðskiptavinir njóta rólegra farrými og er treyst að finna eigin leið.\n\nNjóttu flugs þíns.', actions: [{ label: 'Þiggja ókeypis uppfærsluna', if: (G) => !G.has('business') && !G.has('at_hotel'), do: (G) => { G.flag('business'); G.nerves(-2); G.dread(4); G.note('Þú þáðir uppfærsluna. Ekkert breyttist við sætið þitt. Flugfreyja kom með heitt handklæði, og yfirflugþjónninn sagði í framhjáhlaupi ' + V('„Viðskiptafarrými,“') + ' við sjálfan sig, og setti lítið merki.'); } }] }); },
+    text: (G) => p(
+      G.last(),
       'Landgangurinn lyktar af steinolíu og teppi. Við dyr vélarinnar stendur yfirflugþjónninn: hávaxinn, grár í vöngum, með bros sem var straujað með skyrtunni. Hann lítur ekki á brottfararspjöldin. Hann horfir á andlitin, eitt í einu, og segir ' + V('„Velkomin um borð“') + ' við hvert þeirra, eins og hann þurfi að muna það.',
       'Röð 31. Gangsæti, 31B. Í 31C situr maður á þínum aldri með kilju sem hann er þegar hættur að lesa. Hann kinkar kolli. Þú kinkar kolli. Það er allt samtalið, og verður það um sinn.',
       'Einhvers staðar fyrir aftan þig er verið að útskýra fyrir tveggja ára barni, af þolinmæði, að flugvélin sé ekki að fara enn. Flugvélin er ekki að fara enn.',
@@ -1040,16 +1041,16 @@ CONTENTS.is = (() => {
     lift: {
       art: 'corridor', title: 'LYFTAN', kind: 'bad',
       hint: 'Biluð, í Arial.', blurb: 'Þú fórst inn í lyftuna sem kom af sjálfu sér.',
-      text: p(
-        'Dyrnar lokast með kurteisi góðs hótels. Spegillinn innst sýnir þér: flugvélafötin, andlitið, litla pokann úr 10-11 ef þú ert með hann. Lyftan fer niður. Hún fer niður lengur en byggingin hefur hæðir til.',
+      text: (G) => p(
+        G.has('toothpaste') ? 'Dyrnar lokast með kurteisi góðs hótels. Spegillinn innst sýnir þér: flugvélafötin, andlitið, litla pokann úr 10-11 þrýstan að brjóstinu. Lyftan fer niður. Hún fer niður lengur en byggingin hefur hæðir.' : 'Dyrnar lokast með kurteisi góðs hótels. Spegillinn innst sýnir þér: flugvélafötin, andlitið, tómar hendurnar. Lyftan fer niður. Hún fer niður lengur en byggingin hefur hæðir.',
         'Þegar dyrnar opnast blasir við hlýtt ljós og raðir af sætum, og allir í þeim snúa sér við og horfa á þig, og brosa, og yfirflugþjónninn segir: ' + V('„Takk fyrir þolinmæði þína,“') + ' og meinar það.',
       ),
     },
     tantalus: {
       art: 'carpark', title: 'TANTALOS', kind: 'bad',
       hint: 'Þig hefur alltaf langað að heimsækja Ísland.', blurb: 'Þú fórst í heitu laugarnar.',
-      text: p(
-        'Vatnið er 38°C, himinninn er á litinn eins og notuð bréfþurrka og þú ert í sokkunum úr fluginu því þú átt enga aðra sokka. Þetta er, hlutlægt séð, fallegt.',
+      text: (G) => p(
+        G.has('toothpaste') ? 'Vatnið er 38 °C, himinninn er á litinn eins og notaður pappírsklútur og þú ert í sokkunum úr 10-11, fallegustu sokkum sem þú hefur nokkurn tímann séð, nú fullum af brennisteini. Þetta er, hlutlægt séð, fallegt.' : 'Vatnið er 38°C, himinninn er á litinn eins og notuð bréfþurrka og þú ert í sokkunum úr fluginu því þú átt enga aðra sokka. Þetta er, hlutlægt séð, fallegt.',
         'Klukkan 11:00 fer rúta af bílastæði hótels í þrjátíu kílómetra fjarlægð án þín. Klukkan 11:04 berst tölvupóstur sem segir að rútan þín hafi farið klukkan 09:00. Klukkan 11:05 spyr spjallmennið hvort þú hafir notið dvalarinnar.',
         'Þú vildir óska að þú hefðir ekki verið með apalöppina í hendinni þegar þú sagðir það.',
       ),
@@ -1090,8 +1091,8 @@ CONTENTS.is = (() => {
     collective: {
       art: 'plane', title: 'SJÁLFSTJÓRNARSAMFÉLAG LHR–LAX', kind: 'good',
       hint: 'Sögusagnir eru ekki opinber boðleið.', blurb: 'Þú komst á leiðarenda, og það gerðu líka allir sem þú talaðir við.',
-      text: p(
-        'Í stiganum hlær einhver, og svo hlæja allir, og rigningin skiptir engu máli. Þið hafið ferðast saman í rúma tuttugu og átta tíma. Þú ert með QR-kóða, mann í flíspeysu, mann úr 31C, og smábarn sem hefur séð sitthvað.',
+      text: (G) => p(
+        'Í stiganum hlær einhver, og svo hlæja allir, og rigningin skiptir ekki máli. Þið hafið ferðast saman í meira en tuttugu og átta tíma. ' + (G.has('uk261') ? 'Þú ert með QR-kóða, mann í flíspeysu, ' : 'Þú ert með mann í flíspeysu, ') + (G.has('met31c') || G.has('ally31c') ? 'mann úr 31C, ' : '') + 'og smábarn sem hefur séð ýmislegt.',
         'Nákvæmustu og gagnlegustu upplýsingarnar í allri þessari þrautagöngu komu úr útprentunum í Arial og frá tilviljunarkenndum farþegum sem báru sögusagnir á milli. Enginn í einkennisbúningi baðst nokkurn tímann afsökunar. Það kom í ljós að þú þurftir þess ekki.',
         'Sjáumst í Los Angeles. Fyrir hönd sjálfstjórnarsamfélags LHR–LAX óskarðu manninum á gjörgæslunni góðs bata.',
       ),

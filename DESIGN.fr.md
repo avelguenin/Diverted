@@ -1,0 +1,202 @@
+# DIVERTED – notes de conception
+
+> *« chatbot british airways, e-mail british airways et SMS british airways : l'un dit toujours la vérité, l'un ment toujours, et l'un »*
+> – le fil, tweet 29 sur 67, inachevé
+
+Ce document explique ce que le jeu cherche à faire et pourquoi chacune de ses parties est construite comme elle l'est. Il s'adresse à quelqu'un qui voudrait modifier le jeu ; il renvoie donc aussi au code.
+
+## 1. La prémisse, et ce que le fil d'origine nous a donné
+
+Le cahier des charges : un jeu d'horreur où votre vol Londres–LA atterrit à Reykjavík sans explication ni plan, où suivent des messages cryptiques et des bus mystérieux, et où la compagnie menace de vous abandonner sur place si vous vous plaignez. Mauvais courriel, mauvais bus, mauvaise réclamation : game over.
+
+Le fil joint n'est pas une histoire d'horreur. C'est le récit très drôle, très fatigué, d'un déroutement bien réel. Mais lu comme de la *conception de système*, c'est presque un document de jeu achevé, parce que l'auteur ne cesse de remarquer les trois mêmes choses :
+
+1. **L'information ne vient pas d'où elle devrait.** Les canaux officiels (e-mail, SMS, chatbot) sont en retard, contradictoires ou physiquement impossibles (« à 9 h 40 nous avons reçu un e-mail disant que des bus nous prendraient à 9 h 00 »). Les sources fiables sont *une feuille A4 en Arial tachée d'eau* et *des passagers au hasard qui relaient des ouï-dire*.
+2. **La seule façon de savoir que vous êtes au bon endroit, c'est de reconnaître les autres passagers**, « bien que pas très physionomiste », et de remarquer qu'ils portent les mêmes vêtements que la veille au soir.
+3. **L'autorité est polie, impérieuse, jamais désolée, et ouvertement menaçante** (« c'est moi qui commande et la sécurité de nos clients est tantamount » ; « il abandonnerait les gens en Islande s'ils résistaient ou protestaient »).
+
+Plus une ligne qui est littéralement une spécification d'interface : *« imaginez une jauge de jeu vidéo, mais pour mes nerfs, qui descend jusque dans la zone du “mince filet rouge tremblant” »*.
+
+Chaque mécanique du jeu est l'une de ces observations, prise au pied de la lettre. L'horreur n'est pas ajoutée par-dessus la comédie ; elle est ce dont la comédie parle déjà, une fois les réconforts retirés.
+
+### Du fil au jeu : carte des temps forts
+
+Le jeu s'ouvre quarante minutes avant le fil, à la porte d'embarquement, parce que l'horreur a besoin d'un *avant* : une cabine normale assez longtemps pour que le joueur ait un siège, un voisin, un repas et une routine à perdre. Chaque élément de la menace à venir y est planté sous une forme innocente – la formule des consignes de sécurité, la fiche de comptage, l'habitude qu'a le chef de cabine de regarder les gens plutôt que les papiers – de sorte que, quand la menace arrive, elle est reconnue plutôt qu'introduite.
+
+| Fil | Jeu |
+|---|---|
+| Un vol normal jusqu'à ce qu'il ne le soit plus ; dérouté pour une urgence médicale ; débarqués de nuit ; l'équipage évaporé au contrôle des passeports | `boarding` → `takeoff` → `service` → `night` : quatre heures d'un avion qui fonctionne exactement comme il devrait, avec un chef de cabine qui salue des visages et non des cartes d'embarquement, fait lui-même la démonstration de sécurité (« la sécurité de nos clients est tantamount », dit comme la chose la plus ordinaire), suit le chariot-repas sans servir, et parcourt l'allée obscure avec une petite fiche, en comptant ; un rideau tiré à l'avant. Puis `cabin`, et plus tard `landing` – l'équipage franchit une porte « qui ne se referme pas tant qu'elle cesse d'être une porte » |
+| Les passagers protestent contre le déroutement ; le chef de cabine répond en menaçant d'abandonner quiconque proteste | `cabin` → `cabin_purser` : l'annonce du commandant met la cabine en émoi (un homme à l'office, un bouton d'appel qui n'arrête pas), le joueur peut s'y joindre, et la menace arrive *comme conséquence* – plus les pastilles **NOTÉ** et le drapeau `objected` qui vous suit |
+| L'e-mail propose un hôtel *à Heathrow* | `heathrow`/`car` – la fin HÉBERGÉ |
+| Pas de bagages en soute, tout est fermé, ni nourriture ni dentifrice | Le hub de la nuit à l'hôtel : chips et mini-bouteille de vin (« girl dinner »), shampoings minuscules, les vingt minutes de marche jusqu'au 10-11 |
+| « Des Islandais en uniforme nous disant de ne pas suivre les consignes des e-mails et de monter dans les bus à la place » | `icelander` – « Ne suivez pas les e-mails. Il y a des bus. » |
+| Des bus d'origine inconnue, personne ne les a annoncés, un type en polaire a dit « soi-disant » | Les scènes d'inspection des bus ; le ouï-dire comme ressource |
+| Le trajet en bus est inquiétamment long ; un bambin soupire « quelle journée » | `ride` |
+| L'e-mail au sujet des « autocars » arrive trente minutes après l'embarquement, sans indiquer de lieu | Système de messages programmés : `G.at(t + 30, 'email', …)`, horodaté avant d'arriver |
+| La feuille en Arial dit 11 h 00 ; l'e-mail de 9 h 40 dit 9 h 00 ; le chatbot dit autre chose | L'onglet **Papier** contre **Mail** contre **Ally** ; l'autocar-leurre de 09:00 ; NO-SHOW si vous attendez l'heure exacte imprimée |
+| « Il y avait un bus dehors… “vous devriez peut-être vous dépêcher” » – reconnaître les passagers est la seule confirmation | `buses2` : le bon bus est celui où des gens portent les vêtements d'hier |
+| Les suggestions de sources chaudes dans les mentions | La fin TANTALE et le texto de Jo |
+| La FAQ UK261 transformée en QR code, montrée à chaque passager ; « je vais faire ma karen » | Le drapeau `uk261` et la jauge **COLLECTIF** ; la partager est la façon *sûre* de se plaindre |
+| La borne échoue deux fois ; un seul comptoir ; il ouvre exactement 3 h avant le départ ; le départ n'arrête pas de glisser | Le hub `airport`, la variable `dep` et l'e-mail « départ révisé » de 12:00 qui déplace le comptoir |
+| L'agent de porte hurle à propos des groupes d'embarquement, cent personnes rient | `gate` |
+| Passerelle → un bus → une vraie autoroute à travers des pâturages → « je crois que je vois notre avion » → pluie | `jetbridge`, `tarmac`, `plane` |
+| « La majorité de nos clients se sont montrés compréhensifs et patients » ; le remboursement du wifi | Les bonnes fins |
+| « Rendez-vous à portland… ou au groenland. ou en enfer. » | RENTRÉ (OU AU GROENLAND, OU EN ENFER) |
+
+Les noms et la compagnie sont fictifs (Albion Atlantic, « Nous faisons notre meilleur »). La destination est Los Angeles, conformément au cahier des charges. Keflavík est innocent.
+
+## 2. Ce qui a été emprunté aux deux jeux de référence
+
+### De *No, I'm Not a Human* : le tri par indices
+
+La boucle centrale de ce jeu : quelque chose se présente à votre porte en prétendant être ce dont vous avez besoin ; vous l'inspectez à la recherche de petits indices physiques ; vous le laissez entrer ou non ; les règles qui définissent ce qui compte comme indice sont distillées au compte-gouttes par une émission peu fiable ; se tromper est fatal ; les parties sont courtes et l'on collectionne les fins.
+
+DIVERTED transpose cela terme à terme sur des autocars :
+
+- **Le visiteur est un autocar.** Chaque scène de bus (`buses1`, `buses2`, plus les pièges à bus unique `decoy_morning` et `walk`) présente 2 à 3 véhicules avec un nom, une pancarte, deux détails visibles et deux ou trois **détails cachés** révélés par *Regarder de plus près*, ce qui coûte des minutes. Monter à bord est l'acte irréversible.
+- **Les indices sont diégétiques et cohérents sur tout le jeu.** Le bon bus a toujours : une pancarte manuscrite ou au feutre (Arial/papier, jamais LED) ; un chauffeur en gilet fluo qui ne s'intéresse pas à vous ; des gens que vous reconnaissez, dans les vêtements avec lesquels ils ont volé. Le mauvais bus a toujours : l'écusson et la LED ; un chauffeur dans l'uniforme de l'*équipage disparu* qui vous sourit, à vous précisément ; des inconnus reposés en chemises propres, sans aucun téléphone à la main. La troisième option (Flybus, navette du Blue Lagoon) est le bus authentique-mais-pas-le-vôtre, dont l'indice est que ses passagers ont des bagages ou des chaussettes propres – choses qui vous font ostensiblement défaut.
+- **L'émission qui enseigne les règles, c'est le ouï-dire.** Dans NINAH, c'est la télévision. Ici, c'est l'Islandais, l'homme en polaire, la femme au bambin, l'homme à la casquette des Blazers, et un texto anonyme d'un +354 : « montez pas dans le beau ». Parler aux gens fait monter un compteur collectif caché et débloque des lignes d'indice sous le texte de la scène. Les canaux officiels, eux, sont le canal du *mensonge*. Le joueur doit apprendre que le logo est l'indice du danger – ce qui inverse la hiérarchie de confiance que l'image de marque de la compagnie est conçue pour installer.
+- **Les détails sont randomisés à chaque partie** (ordre, livrée, formulation de la pancarte en papier) avec un générateur aléatoire à graine, de sorte que la réponse ne peut pas être mémorisée comme « celui de gauche » ; il faut la *lire*. `G.pick` / `G.shuffle` dans `content.js`.
+- **Mort permanente, parties courtes, une galerie de fins.** Une partie dure 20 à 30 minutes. Douze fins, dix mauvaises, stockées dans `localStorage` et affichées comme des cartes verrouillées avec un indice d'une ligne, si bien que la galerie est elle-même un guide discret (« Quelqu'un fait toujours une annonce. » / « Il avait un écusson. Il était très beau. »).
+
+### De *Don't Look Outside* : la chambre, les besoins, la règle
+
+L'apport de ce jeu, c'est la forme du deuxième acte : vous êtes confiné ; vous avez de petits besoins prosaïques (manger, dormir, tenir le coup) ; la nuit est la fenêtre de danger ; et il y a une règle énoncée dont tout le jeu consiste en réalité à savoir si vous l'enfreindrez.
+
+- **Les pièces.** L'hôtel, ce sont quatre scènes-hubs – `room`, `corridor`, `lobby`, `carpark` – entre lesquelles vous circulez, plus la route jusqu'au 10-11. Les listes d'actions *sont* l'inventaire des petites misères du fil : pas de dentifrice, les shampoings minuscules, chips-et-mini-vin, consulter ses droits, poster à ce sujet, la machine à glaçons, les mots croisés du veilleur de nuit. Rien ici n'est une énigme ; c'est de la texture, et chaque action renvoie un paragraphe différent (§5), si bien que la même pièce n'est jamais deux fois la même pièce.
+- **Les besoins ne sont pas une simulation de survie.** Il n'y a pas d'horloge de faim. Manger, le thé, une douche, les autres et le sommeil ne comptent que parce qu'ils font un peu baisser les deux jauges (§4b) ; ne rien faire est toujours permis et rien ici ne vous affame.
+- **La règle.** « Veuillez ne pas regarder par la fenêtre », délivrée par le chatbot à 04:50, est le seul hommage explicite à *Don't Look Outside*. Regarder n'est *pas* fatal – ce serait une ficelle grossière – mais cela active `seen`, auquel le chef de cabine fait référence plus tard, dans le bus du tarmac : « Vous avez regardé. » Le prix, c'est de l'effroi emporté avec soi, pas un game over. Le coup frappé à la porte à 04:30 (« Autocar pour les passagers Albion Atlantic. Départ immédiat. Dernier appel. ») est la vraie épreuve de la nuit : c'est l'heure annoncée par le *chatbot*, et seule la pancarte en papier la contredit.
+- **La nuit comme fenêtre de danger.** Chaque choix létal à l'hôtel est nocturne (la marche, le coup à la porte – qui vous trouve où que vous soyez, dans la chambre ou dans le couloir –, l'autocar sur le parking, l'ascenseur qui arrive tout seul ; la fenêtre est le choix sous-létal). Le matin est relativement sûr jusqu'à l'arrivée des bus, ce qui est aussi la façon dont le jeu de référence rythme les choses : les corvées, puis la porte.
+
+## 3. Les trois canaux (« l'un dit toujours la vérité, l'un ment toujours, et l'un »)
+
+Le fil n'a jamais achevé la phrase. Le jeu le fait, à peu près :
+
+| Canal | Comportement | Comment c'est construit |
+|---|---|---|
+| **Mail** (Albion Atlantic, avec écusson) | Toujours *en retard* et hors sujet. L'heure d'envoi et l'heure de réception sont affichées séparément pour que le joueur voie l'e-mail du bus de 09:00 arriver à 09:40. | `G.at()` avec un `stamp` antérieur à la livraison ; la vue e-mail affiche les deux. |
+| **Ally** (chatbot) | *Ment* toujours, mais de façon précise et utile : il nomme le piège dans lequel vous êtes sur le point de tomber (autocar de 03:40, transfert de 08:00, « chambre 214, ne regardez pas par la fenêtre »). C'est aussi le moyen le plus rapide de se faire NOTER. | `CONTENT.chat` – les réponses sont des fonctions de l'état ; « Je veux faire une réclamation » appelle `G.strike()`. |
+| **SMS** | Rares. Deux de la compagnie (faux), un d'un proche (sources chaudes), un d'un numéro inconnu (juste). | De simples bulles ; le numéro inconnu est le seul indice non ambigu du jeu, et il est délibérément niable. |
+| **Papier** | *La vérité.* Tout ce qui est imprimé en Arial et scotché à quelque chose. Le joueur le photographie et cela va dans un onglet rendu en véritable Arial avec une tache d'eau. | `renderPaper()` dans `engine.js` ; `.paper-sheet` dans le CSS. |
+
+L'objectif de conception est qu'à la deuxième scène de bus, le joueur consulte d'abord l'onglet Papier et lise l'écusson comme une menace. Ce renversement – le canal de marque, dessiné, rédigé par des professionnels, est le dangereux ; le canal laid et fait main est le sûr – est la thèse du jeu et vient tout droit du tweet 32 : « des centaines d'autres personnes qui choisissent de faire confiance à la feuille imprimée en arial tachée d'eau plutôt qu'aux e-mails avec le logo BA, parce qu'on sait tous à quoi s'en tenir. »
+
+## 4. Se plaindre
+
+Le cahier des charges dit que *faire la mauvaise réclamation* est un état d'échec. Le fil fournit la taxonomie :
+
+- Se plaindre **à la compagnie** – en cabine, au chatbot, au comptoir, à la porte d'embarquement, ou en exigeant son bagage – est **NOTÉ**. Une pastille à chaque fois. Le chef de cabine écrit sur une petite fiche. À trois, la compagnie agit en conséquence *là où elle le peut* – au comptoir d'enregistrement ou à la porte, jamais à l'hôtel – et c'est LAISSÉ SUR PLACE : « les clients qui résistent ou s'opposent aux décisions opérationnelles peuvent être débarqués », dit sans la moindre méchanceté.
+- Se plaindre **les uns aux autres** – comparer ses notes, partager le QR code UK261, rire de l'agent de porte – est compté en silence. C'est la seule sorte qui aide. Cela débloque des indices et, à 5 ou plus, la meilleure fin, LE COLLECTIF AUTOGÉRÉ DE LHR–LAX, qui est la formule même du fil pour ce que les passagers sont devenus.
+
+Il y a une réclamation cachée : confirmer l'hôtel à Heathrow puis *ne pas* monter dans la voiture active `booked`, et l'agent d'enregistrement note plus tard que « nos dossiers indiquent que vous avez été hébergé » – une marque gagnée douze heures plus tôt en faisant confiance à un e-mail. C'est la conséquence « faire confiance au mauvais courriel » pour les joueurs qui ont esquivé la conséquence immédiate.
+
+## 4b. Les deux jauges : ce qu'elles font et, surtout, ce qu'elles ne font pas
+
+La première version avait une barre de nerfs qui se vidait et vous tuait, et des options dangereuses marquées en rouge. Les deux ont disparu. Les règles, désormais :
+
+- **Deux jauges, qui se remplissent toutes deux, et dont aucune ne termine la partie.** NERFS se remplit avec la confrontation et le stress ; EFFROI se remplit avec la soumission et avec le fait de regarder des choses qu'on vous a dit de ne pas regarder. Les petits choix les déplacent de quelques points. Le temps les déplace un peu (nerfs +1 toutes les 40 minutes d'éveil ; effroi +1 toutes les 30 minutes entre minuit et l'aube). Le sommeil, la nourriture, une douche, un rire et les autres les font baisser. Il n'y a nulle part dans le jeu de moment « la jauge atteint le maximum → mort ».
+- **Leur seul effet est de fermer des options.** Chaque choix peut porter un `nerveMax` ou un `dreadMax`. Quand une jauge dépasse ce nombre, l'option reste listée, mais barrée et désactivée, avec une raison d'une ligne écrite pour cette option (`whyNot`) : un joueur à bout ne peut pas rester allongé sans bouger, renverserait le thé, enverrait promener l'homme en polaire ; un joueur intimidé ne peut pas consulter ses droits, ne peut pas tourner le dos à l'autocar, ne peut pas marcher vers l'homme qui frappe. Les raisons ne nomment jamais une jauge, mais chaque famille garde sa saveur – tremblements et emportement d'un côté, paralysie et obéissance de l'autre – pour rester apprenables. Des nerfs élevés retirent les options calmes, patientes, sociables et laissent les options de confrontation. Un effroi élevé retire les options de défi et d'indépendance et laisse celles de soumission. Ainsi les jauges ne vous tuent jamais ; elles vous laissent les choix que vous auriez faits de toute façon si vous étiez aussi à bout ou aussi intimidé, et *certains* d'entre eux sont létaux.
+- **Pas de point de défaillance unique.** Les seuils sont fixés par option et délibérément inégaux : parler au couple âgé demande des nerfs ≤ 75, l'homme en polaire ≤ 90 ; refuser d'ouvrir demande un effroi ≤ 80, reculer du judas ≤ 88, marcher jusqu'au 10-11 ≤ 70, l'escalier de secours ≤ 92. Un joueur qui a été surtout docile toute la nuit arrive au coup frappé à la porte avec un effroi dans les quatre-vingts et découvre que « ne pas ouvrir » a disparu – mais « regarder par le judas » est toujours là, et derrière, une chance de plus. Chaque entonnoir a plus d'un mur, et chaque mur est à un endroit différent.
+- **Deux sortes d'options, deux motifs, jamais étiquetés.** Les options de confrontation (`kind: 'conflict'`) portent le motif de la barre de nerfs : un bord gauche rouge qui s'épaissit et une ombre de texte qui rougit à mesure que les nerfs montent, et aux paliers supérieurs elles tremblent. Les options de soumission (`kind: 'comply'`) portent le motif de la barre d'effroi : le lavis bleu marine de la compagnie et une lueur dorée qui s'intensifient à mesure que l'effroi monte, un ✦ doré à la place du chevron, et le texte grossit un peu. Les barres utilisent les mêmes couleurs, si bien qu'après une ou deux parties le joueur peut déduire quelle barre gouverne quelle famille – le jeu ne le dit jamais. C'est la boucle d'apprentissage demandée par le cahier des charges : vous apprenez, de partie en partie, de quelle sorte est chaque option, avant d'apprendre si elle est bonne ou mauvaise.
+- **Aucune des deux familles n'est « la mauvaise ».** Certaines options de soumission sont correctes (rester assis dans le bus du tarmac, embarquer par groupe, ne pas regarder par la fenêtre, attendre au comptoir) ; certaines options de confrontation sont correctes ou inoffensives (protester en cabine, exiger son bagage, interroger le chauffeur). Certaines de chaque sorte sont des game over (ouvrir la porte, monter dans l'ascenseur, monter dans l'autocar à écusson ; exiger de descendre du bus du tarmac). Le motif vous dit le *tempérament* d'un choix, pas son issue.
+- **La répétition est bon marché.** Faire deux fois la même chose au même endroit coûte moitié moins sur les jauges (`engine.js`, `choose()`), si bien qu'un joueur qui vérifie la porte quatre fois est anxieux, pas condamné.
+- **Réglage.** Des politiques de test automatisées (`tools/playtest.js` : docile, confrontationnelle, aléatoire, « raisonnable », et un parcours prudent écrit à la main) ont été exécutées dans les trois langues. Une partie prudente se termine autour de nerfs 0–10 et effroi 60 sans qu'aucune option n'ait jamais été verrouillée ; une partie purement docile arrive au coup frappé à la porte avec un effroi de 70–100 et est généralement canalisée vers CAR DE NUIT ou L'ASCENSEUR ; une partie confrontationnelle atteint des nerfs de 75–100, perd la capacité de rire à la porte d'embarquement ou d'attendre au comptoir, et accumule les pastilles NOTÉ jusqu'à l'enregistrement. Les explorateurs aléatoires qui fouillent chaque recoin sombre saturent les deux barres avant 04:00, ce qui est la punition prévue pour qui traite l'hôtel comme une liste à cocher.
+
+## 5. Un texte qui ne se répète jamais
+
+Les scènes-hubs construisent leur paragraphe à partir de trois éléments (`hub()` dans `content.js`) : une courte ligne d'état fixe qui dit où vous êtes et ce qui ne va pas chez vous (*« Chambre 214. 03:40. Vous êtes trop fatigué pour dormir, et vos dents sont sales, et vous n'avez pas mangé. »*), le résultat de ce que vous venez de faire (`G.note()`, défini par l'action), et une ligne d'ambiance tirée d'un réservoir propre à ce lieu. Les lignes d'ambiance portent un palier d'effroi ; le sélecteur préfère les lignes au palier courant ou juste en dessous et ne répète jamais la dernière utilisée, de sorte que le même hall à effroi 2 est une grille de mots croisés et une affiche touristique, et qu'à effroi 5 le veilleur dit « Il a demandé après vous » sans lever les yeux. Les actions répétables (vérifier la porte, la télévision, la fenêtre, la machine à glaçons, le distributeur) indexent leur résultat sur le nombre de fois où vous les avez faites et sur l'effroi, si bien que la quatrième vérification de la porte ne se lit pas comme la première. Rien dans un hub ne rend deux fois de suite le même paragraphe.
+
+## 5b. Escalade
+
+L'effroi pilote aussi la présentation, en six paliers (`data-dread` sur l'élément racine, défini à partir de la jauge) :
+
+- La page s'assombrit : le vignettage se resserre, les lignes de balayage s'épaississent, le titre clignote plus vite, au palier 5 le texte de la scène tressaute, au palier 6 la ligne de lieu passe au rouge.
+- L'horloge ment : à partir du palier 3, toutes les quelques secondes elle affiche `--:--` ou une heure d'il y a plusieurs heures pendant un cinquième de seconde.
+- Les images se dégradent : à partir du palier 3, une silhouette en bleu marine à col blanc apparaît au bord des vignettes de scène, de plus en plus souvent à mesure que l'effroi monte ; à partir du palier 4, des images passent parfois au noir ; la cadence de redessin augmente.
+- Le chatbot se rapproche : à partir du palier 3, les réponses d'Ally gagnent une seconde ligne (*« Vous êtes toujours dans la chambre 214. »*, *« Veuillez rester où vous êtes. »*) ; au palier 5, *« Pourquoi êtes-vous encore là ? »*
+- La batterie du téléphone tombe de 31 % à Heathrow à un seul chiffre à la porte d'embarquement, et il n'y a pas de chargeur, parce que le chargeur est dans le sac, et que le sac est dans le système.
+- La lumière du jour aide : dormir (ou échouer à dormir) à 07:30 retire 25 points d'effroi. L'aéroport et la porte en remettent une partie.
+
+## 5c. Quatre langues, quatre voies
+
+Le jeu existe en anglais, français, islandais et finnois. Le choix se fait dans la première scène du jeu : l'embarquement à Heathrow, quatre voies, quatre panneaux (*Lane A · English / Voie B · Français / Rein C · Íslenska / Kaista D · Suomi*), un agent de porte qui hurle à propos des voies – l'image en miroir de l'agent de Keflavík qui hurlera à propos des groupes quatorze heures plus tard. Choisir une voie fixe la langue dans laquelle la compagnie a promis de vous servir.
+
+Pourquoi ces quatre-là, pour mémoire : l'anglais parce que le fil d'origine est en anglais ; le français parce que l'auteur est français et veut montrer le jeu à sa famille ; le finnois parce que l'auteur, au bout d'une longue journée, a brièvement cru que Reykjavík était en Finlande, et que la version a été conservée comme un monument à cette erreur ; l'islandais parce que Reykjavík est, à la réflexion, en Islande.
+
+Qui parle quoi fait partie de la conception, et n'est pas un accident de traduction :
+
+- **La compagnie parle mal votre langue.** Dans les versions française et islandaise, les e-mails, le chatbot, les annonces du chef de cabine et le personnel des comptoirs sont rendus dans un français ou un islandais de traduction automatique, à moitié cassé – ordre des mots anglais, mauvais cas, « tantamount » laissé tel quel, le slogan calqué en *Nous faisons notre meilleur* / *Við erum að gera okkar best*. « Nous sommes fiers de vous servir dans la langue de votre choix » est la promesse de la compagnie, et voilà ce qu'elle vaut. C'est aussi un petit procédé d'horreur : la seule voix qui ait de l'autorité est celle qui ne parvient pas tout à fait à vous parler.
+- **Les locaux parlent bien.** Dans la version islandaise, la femme de l'aéroport et le veilleur de nuit parlent un islandais correct – ce sont les voix honnêtes, et elles sont chez elles. Dans la version française, ils répondent en anglais (à un voyageur français à Keflavík, on parlerait anglais), ce qui est laissé non traduit à l'intérieur de la narration française ; si vous leur demandez s'ils parlent français, ils passent à un français hésitant et bienveillant pour le reste de la nuit (*« Onze. C'est écrit onze. Peut-être vous dormir. »*). La question est une véritable option dans l'aéroport et dans le hall, version française uniquement.
+- **La version finnoise** est une traduction directe, révisée pour le naturel après qu'un lecteur finnois a relevé les anglicismes de la première version ; les narrations islandaise et française ont reçu la même passe de révision (le français suit aussi la convention du tiret demi-cadratin espacé, « – », jamais le tiret cadratin, hors des textes propres à la compagnie). Les trois devraient encore être relues par un locuteur natif avant d'être montrées à quiconque pour de bon.
+
+Mécaniquement, `content.js` est la source de vérité ; les trois autres fichiers en sont générés en substituant chaque littéral de chaîne à travers un dictionnaire (`tools/i18n.py`, `tools/dict_*.json`), de sorte que les quatre versions ne peuvent pas diverger en logique, seulement en prose. Les répliques des locaux sont enveloppées dans `LX(...)` dans la source ; le générateur les laisse en anglais pour le français, et le fichier français porte une seconde petite table (`tools/dict_fr_broken.json`) pour la variante en français hésitant. Le moteur tient un registre `CONTENTS` et permute le contenu actif quand une voie est choisie ; la scène des voies elle-même vit dans `engine.js`, parce que c'est la seule scène qui doive exister avant qu'il y ait une langue.
+
+**L'écran-titre** est le seul endroit où un visiteur arrive avant d'avoir choisi une langue ; il se comporte donc comme un panneau d'information d'aéroport : toutes les quelques secondes il fait défiler les quatre langues – sous-titre, présentation et boutons – avec une animation de tableau à palettes, et cesse de défiler dès qu'une voie est choisie. Rien n'y dit « choisissez une langue » ; il continue simplement à vous montrer la vôtre jusqu'à ce que vous embarquiez.
+
+## 6. Ton
+
+Le fil est pince-sans-rire, et le pince-sans-rire est le bon registre pour l'effroi. Donc :
+
+- **La raison du déroutement n'est jamais expliquée au-delà de ce qu'avait le fil.** Le fil ne l'a jamais que de seconde main : « une urgence médicale », un chef de cabine laissant entendre que le passager est en première, et à la fin « apparemment en soins intensifs – je ne sais pas à quel point cette information est fiable ». Le jeu garde exactement cela : le commandant dit qu'un client est souffrant, un rideau est tiré, si vous passez derrière vous voyez quelqu'un sur le sol de l'office et une couverture sans qu'on vous dise ce qui ne va pas, et la bonne fin souhaite bon rétablissement à « l'homme en soins intensifs » sur la foi d'un ouï-dire. Rien n'est jamais confirmé, et aucune fin ne l'explique.
+- **Pas de jump scares, pas de sang, rien de surnaturel n'est jamais confirmé.** L'équipage « disparaît ». Les passagers de l'autocar sont « reposés ». La moquette est mouillée. Le chef de cabine lève les yeux vers votre fenêtre. On n'est jamais plus explicite que cela. L'imagination du joueur fait le reste, ce qui est moins cher et plus effrayant.
+- **La voix de la compagnie ne change jamais.** Chaque menace est délivrée dans la langue du service client. « Nous faisons notre meilleur » apparaît en cabine, dans chaque pied d'e-mail, à la porte de l'autocar dans le noir, et au comptoir d'enregistrement. Le dernier est en plein jour et il est censé être le pire.
+- **Les vraies blagues sont gardées intactes** – la seconde borne, le girl dinner, le remboursement du wifi – parce que c'est ce qu'une personne remarque réellement à la vingt-sixième heure, et parce que le rire *est* la mécanique de survie. Chaque rire dans le jeu retire quelques points aux deux jauges.
+- **L'Islande n'est pas la menace.** Le fil y insiste, et le jeu aussi : l'Islandais est la première voix honnête, le 10-11 est « éclairé comme un sanctuaire », la fin PÂTURAGES a de très jolis moutons.
+
+## 7. Direction visuelle
+
+Les deux jeux de référence sont en basse résolution, brumeux, et vous laissent *regarder* la chose sur laquelle vous devez vous décider. Les graphismes suivent cela ici, avec une contrainte : aucun fichier image. Tout est dessiné procéduralement dans `art.js` sur un minuscule canevas (160×72 pour les scènes, 128×64 pour les bus) puis agrandi avec `image-rendering: pixelated`, de sorte que le dépôt reste six fichiers texte et que l'apparence est cohérente à toute taille.
+
+- **Vignettes de scène.** Chaque scène et chaque fin porte une clé `art` qui choisit un peintre : la cabine avec son signal ceinture allumé, le terminal éclairé comme un frigo avec la porte qui ne dit rien, l'arrêt d'autocar sous lampe au sodium, la route à travers la lave, la fenêtre de la chambre 214 (qui ne montre l'autocar sur le parking que si vous avez regardé), le couloir à la moquette mouillée, le hall avec la pancarte A4, le tableau des départs avec une seule ligne rouge, la passerelle qui se termine par un bus, les pâturages, l'avion sous la pluie. Elles se redessinent deux fois par seconde avec une nouvelle graine, si bien que les tubes vacillent, la pluie tombe et les gens bougent – le truc de *Don't Look Outside* : une image fixe qui n'est pas tout à fait fixe. Les redessins s'arrêtent sous `prefers-reduced-motion`.
+- **Portraits de bus.** Chaque carte d'autocar a une illustration générée à partir d'une petite spécification (`livery`, `windows`, `passengers`, `sign`, `driver`). C'est le judas de *No, I'm Not a Human* : les indices sont visibles avant qu'on ait lu un mot, si l'on sait où regarder. L'autocar à écusson a des fenêtres chaudes et vives et une même silhouette droite, identique, à chaque fenêtre. L'autocar ordinaire a des fenêtres ternes et des passagers affaissés à des hauteurs différentes, certaines fenêtres vides, une avec deux personnes. Le Flybus a des porte-bagages. La navette du lagon a des serviettes. Le chauffeur porte un gilet fluo, une veste bleu marine à col blanc, ou rien de particulier. Rien de tout cela n'est étiqueté ; une seconde partie vous apprend à le lire.
+- **Le cadre.** Un seul thème sombre, délibérément : il est deux heures du matin dans un aéroport fermé à chaque scène. Les surfaces sont d'un presque-noir chaud avec un motif de tramage de 4 px ; les panneaux ont un biseau de deux pixels avec une ombre dure, comme une boîte de dialogue des années 1990 qu'on aurait laissée dans un fumoir. Le corps de texte est composé en VT323 (une fonte de terminal) à 21 px pour la lisibilité, les libellés et les titres en Press Start 2P, tous deux depuis Google Fonts avec Courier en repli. Les deux jauges sont des barres segmentées : les nerfs en rouge, qui tremblent en haut ; l'effroi dans le bleu-marine-vers-or de la compagnie, qui luit en haut. Un vignettage pleine page assombrit les coins et de légères lignes de balayage recouvrent tout. Le téléphone garde à dessein son propre style moderne en police système : c'est le seul objet propre, corporate, bien dessiné du jeu, et c'est celui qui vous ment.
+
+## 7b. Conception sonore
+
+Tout est synthétisé dans `audio.js` avec l'API Web Audio – du bruit, quelques oscillateurs, des filtres – si bien qu'il n'y a toujours aucun fichier média. Le son démarre au premier clic (les navigateurs exigent un geste) et une commande ♪ dans la barre supérieure le coupe, ce dont on se souvient d'une visite à l'autre.
+
+Chaque clé de scène a son propre paysage sonore, fondu-enchaîné sur deux secondes au changement de scène :
+
+- **Cabine** : un bourdon de réacteur à 55 Hz sous un bruit brun, un léger sifflement, et de temps à autre le carillon de la ceinture – la « cuillère sur un verre » – qui retentit aussi à l'entrée dans la scène du déroutement.
+- **Porte d'embarquement de Heathrow et passerelle** : une rumeur de hall, un carillon de sonorisation à deux tons de temps en temps.
+- **Arrivées de Keflavík** : un bourdonnement fluorescent à 50 et 100 Hz, un léger lavis de hall, le tube au-dessus du comptoir des bagages qui tique toutes les quelques secondes, et de loin en loin l'autolaveuse qui passe (une lente houle de bruit filtré).
+- **Arrêt d'autocar** : du vent (bruit brun passe-bande avec deux LFO lents), un ralenti diesel à 32 Hz avec un tchac-tchac en onde carrée, de la pluie.
+- **La route** : bourdon de moteur, bruit de roulement, un lent grondement.
+- **Chambre 214** : le chauffage à 60 Hz, un lavis grave, et à peu près toutes les demi-minutes un petit clic venu du couloir.
+- **Couloir** : presque le silence, la machine à glaçons qui broie deux secondes d'affilée, et, rarement, le câble de l'ascenseur – un son triangulaire de trois secondes.
+- **Hall** : le ronronnement de la machine à café, les portes vitrées qui coulissent pour personne.
+- **Parking** : un vent plus dur, du gravier.
+- **Départs** : rumeur, une frange fluorescente, le tableau à palettes qui bascule (quatorze clics), le carillon de sonorisation.
+- **Le bus du tarmac** : moteur et pluie sur un toit. **L'aire de trafic** : pluie sur du métal et un réacteur qui monte en régime.
+- **Le vide** (la vignette de titre vide et la fin la plus sombre) : un bourdon à 30 Hz et un lent battement de cœur.
+
+Par-dessus la scène, l'**effroi** ajoute une paire de sinusoïdes désaccordées autour de 40 Hz dont le niveau monte avec le palier (silencieuses aux paliers 0–1, audibles à partir de 2) et dont la hauteur descend à mesure que le palier grimpe ; à partir du palier 5, un sifflement à peine perceptible à 9 kHz s'y joint. Les signaux ponctuels sont déclenchés par le moteur : un buzz à deux impulsions pour chaque message, cinq coups réguliers à l'ouverture des scènes du coup frappé (c'est le même coup, que vous soyez dans la chambre ou dans le couloir), un bip en onde carrée quand la compagnie vous note, un coup sourd et un son de 55 Hz qui s'éteint sur une mauvaise fin, deux notes ascendantes sur une bonne, et le claquement du tableau à palettes quand le panneau-titre change de langue.
+
+## 8. Interface
+
+- **Deux volets : le monde et le téléphone.** Le fil a été écrit *sur un téléphone, dans la situation*, si bien que le téléphone est un second personnage permanent. Sur ordinateur, c'est une colonne fixe avec une batterie qui se vide au fil de la journée ; sur mobile, c'est une feuille inférieure derrière un bouton TÉLÉPHONE avec un badge de non-lus. Des notifications annoncent les arrivées pour que le joueur sente la vibration au moment même où le narrateur la sent.
+- **L'esthétique du tableau des départs.** Ambre sur noir, chasse fixe, une légère ligne de balayage, un titre qui clignote toutes les quelques secondes. L'e-mail reçoit l'en-tête bleu marine et or de la compagnie ; le chatbot, des bulles arrondies et des emoji ; le papier, de l'Arial et une tache. Chaque canal *a l'air* de son niveau de fiabilité, ce qui est la blague.
+- **Commande du son** : le ♪ dans la barre supérieure. Coupé par défaut seulement si vous l'aviez coupé la dernière fois.
+- **Classe Affaires** : l'e-mail de bienvenue à l'embarquement offre un surclassement gracieux. Acceptez-le et rien ne change pour votre siège – mais les cartes de bus perdent tous leurs indices écrits (nom, pancarte, les lignes de Regarder de plus près) et ne vous laissent que les portraits en pixels à lire, exactement comme la formulation de la compagnie le promettait : « à qui l'on fait confiance pour trouver leur chemin ». Cela coûte un peu d'effroi à l'acceptation. C'est le mode de difficulté, choisi dans la fiction et jamais nommé comme tel.
+- **L'horloge est toujours visible** parce que chaque temps fort d'horreur de la source est une question de timing (l'e-mail de 9 h 40 au sujet de 9 h 00 ; le comptoir à exactement 3 heures). Le temps n'avance que par les choix ; il n'y a pas de pression en temps réel, si bien que lire est toujours gratuit.
+- **Accessibilité :** les polices pixel se replient sur Courier si Google Fonts est inaccessible ; le corps de texte est à 21 px pour la lisibilité de la fonte de terminal ; aucune information n'est portée par la couleur seule ; `prefers-reduced-motion` désactive toute animation, y compris les redessins de vignettes ; `aria-live` sur la barre d'état et les notifications ; choix accessibles au clavier ; les canevas sont `aria-hidden` parce que chaque indice visuel est aussi écrit sur la carte.
+
+## 9. Choix techniques
+
+- **HTML/CSS/JS vanille, sans build.** L'exigence est GitHub Pages ; la chose la plus simple qui s'y déploie, ce sont des fichiers statiques, et un jeu textuel n'a pas besoin de framework. `engine.js` ne sait rien de l'histoire ; `content.js` est l'histoire et ne sait rien du DOM ; `art.js` et `audio.js` ne savent rien ni de l'un ni de l'autre et ne font que peindre, ou jouer, ce qu'on leur demande.
+- **Les scènes sont de simples objets aux champs à valeur fonctionnelle.** Le texte, le lieu, les choix et même les listes de bus peuvent être des `(G) => …` pour réagir au temps et aux drapeaux. Cela garde la narration conditionnelle en un seul endroit au lieu de disperser des variantes de scènes.
+- **Une minuscule file de messages programmés** (`S.sched`, vidée par `advance()`) est ce qui fait fonctionner le gag de « l'e-mail arrive trente minutes après votre embarquement » mécaniquement plutôt que comme une ligne de prose.
+- **Un générateur aléatoire à graine par partie** (`mulberry32`), de sorte qu'une partie est reproductible à partir de sa graine si l'on veut un jour ajouter une fonction « partager cette partie ».
+- **`localStorage` uniquement pour la galerie des fins, un compteur de parties et la dernière langue**, protégé par `try/catch` pour les fenêtres de navigation privée. Pas de sauvegarde en cours de partie : les parties durent vingt minutes et la mort permanente est tout l'intérêt.
+
+## 10. Ce qui a été envisagé, et ce qui a été décidé
+
+- **Un « que s'est-il passé » post-mortem après chaque mort, montrant l'indice manqué** – rejeté. Les instructions explicites vont contre l'esprit du jeu. La galerie des fins garde ses indices d'une ligne, ce qui est aussi loin que le jeu ira pour s'expliquer ; le reste est pour une seconde partie.
+- **Le son** – fait (§7b), un paysage sonore par scène plutôt qu'un bourdonnement unique.
+- **Une seconde nuit pour les joueurs qui ratent le vol sans en mourir** – rejetée. Rater le vol est une fin, et le reste. Les mauvaises fins suggèrent quelque chose de vague et de sinistre (la pancarte retirée, la réservation introuvable, la machine à café qui s'éclaircit la gorge) et s'arrêtent là ; elles ne sont jamais adoucies en continuation.
+- **Une difficulté « Classe Affaires » qui retire les indices écrits des cartes de bus** – fait, sous la forme du surclassement gracieux dans l'e-mail de bienvenue (§8).
+- **La prose ne tergiverse jamais sur l'état.** Partout où le texte dépend de ce que le joueur a fait – le sac du 10-11, les chaussettes, le QR code, l'homme du 31C – il résout la condition et dit ce qui est vrai, jamais « si vous l'avez ». C'est une règle désormais, et la fin de l'ascenseur est le bug qui en a fait une.
+
+## 11. Les notes de conception elles-mêmes
+
+Ce document fait partie de la conception, et il est livré comme le jeu : `design.html` est généré à partir du Markdown dans le style propre du jeu, existe dans les quatre langues, s'ouvre dans la langue qu'affiche l'interface au moment où vous cliquez sur le lien de l'écran-titre, et porte en haut un sélecteur visible (EN · FR · ÍS · FI). Les traductions ont été faites avec le même outillage et la même passe de révision que le texte du jeu ; l'anglais est la source de vérité, et là où ils divergent, c'est l'anglais qui a raison.

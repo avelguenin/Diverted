@@ -3,9 +3,18 @@ Run from anywhere: python3 tools/build_design.py"""
 import os, re, markdown
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
-md = open(os.path.join(ROOT, 'DESIGN.md'), encoding='utf8').read()
-body = markdown.markdown(md, extensions=['tables', 'fenced_code'])
-title = re.search(r'^# (.*)$', md, re.M).group(1)
+LANGS = [('en', 'DESIGN.md', 'EN', 'English'), ('fr', 'DESIGN.fr.md', 'FR', 'Français'), ('is', 'DESIGN.is.md', 'ÍS', 'Íslenska'), ('fi', 'DESIGN.fi.md', 'FI', 'Suomi')]
+sections, titles = {}, {}
+for code, fn, short, name in LANGS:
+    path = os.path.join(ROOT, fn)
+    if not os.path.exists(path): continue
+    md = open(path, encoding='utf8').read()
+    sections[code] = markdown.markdown(md, extensions=['tables', 'fenced_code']).replace('<table>', '<div class="tablewrap"><table>').replace('</table>', '</table></div>')
+    titles[code] = re.search(r'^# (.*)$', md, re.M).group(1)
+title = titles['en']
+switcher = ''.join(f'<button class="lang" data-lang="{code}" lang="{code}" title="{name}">{short}</button>' for code, fn, short, name in LANGS if code in sections)
+body = ''.join(f'<section class="doc-lang" lang="{code}" data-lang="{code}" hidden>{html}</section>' for code, html in sections.items())
+BACK = {'en': '‹ BACK TO THE GATE', 'fr': '‹ RETOUR À LA PORTE', 'is': '‹ AFTUR AÐ HLIÐINU', 'fi': '‹ TAKAISIN PORTILLE'}
 
 html = f"""<!doctype html>
 <html lang="en">
@@ -40,6 +49,11 @@ html = f"""<!doctype html>
   .doc a {{ color: var(--amber); }}
   .back {{ display: inline-block; margin: 10px 0 0; font-family: var(--pixel); font-size: 9px; letter-spacing: .1em; color: var(--amber); text-decoration: none; border: 2px solid var(--edge); padding: 10px 14px; box-shadow: inset -2px -2px 0 var(--edge-dark), 0 0 0 2px var(--edge-dark); background: var(--bg-2); }}
   .back:hover {{ color: #fff; }}
+  .langs {{ display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0 0; }}
+  .lang {{ font-family: var(--pixel); font-size: 9px; letter-spacing: .08em; color: var(--ink-dim); border: 2px solid var(--edge); padding: 10px 12px; box-shadow: inset -2px -2px 0 var(--edge-dark), 0 0 0 2px var(--edge-dark); background: var(--bg-2); cursor: pointer; }}
+  .lang:hover {{ color: #fff; }}
+  .lang.on {{ color: var(--amber); border-color: var(--amber-dim); text-shadow: 0 0 6px rgba(226,166,64,.5); }}
+  .doc-lang[hidden] {{ display: none; }}
 </style>
 </head>
 <body>
@@ -49,17 +63,39 @@ html = f"""<!doctype html>
       <span class="brand-title">DIVERTED</span>
       <span class="brand-sub">Albion Atlantic · AB 0271 · LHR → LAX · design notes</span>
     </div>
-    <a class="back" href="index.html">‹ BACK TO THE GATE</a>
+    <div>
+      <a class="back" id="back" href="index.html">‹ BACK TO THE GATE</a>
+      <div class="langs" role="group" aria-label="Language">{switcher}</div>
+    </div>
   </header>
   {body}
-  <p><a class="back" href="index.html">‹ BACK TO THE GATE</a></p>
+  <p><a class="back back2" href="index.html">‹ BACK TO THE GATE</a></p>
 </div>
+<script>
+(function () {{
+  var BACK = {{back_json}};
+  var TITLES = {{titles_json}};
+  function pick(code) {{
+    if (!document.querySelector('.doc-lang[data-lang="' + code + '"]')) code = 'en';
+    document.querySelectorAll('.doc-lang').forEach(function (s) {{ s.hidden = s.dataset.lang !== code; }});
+    document.querySelectorAll('.lang').forEach(function (b) {{ b.classList.toggle('on', b.dataset.lang === code); }});
+    document.querySelectorAll('.back').forEach(function (a) {{ a.textContent = BACK[code]; }});
+    document.documentElement.lang = code; document.title = TITLES[code];
+    try {{ history.replaceState(null, '', '#' + code); }} catch (e) {{}}
+  }}
+  var start = (location.hash || '').replace('#', '');
+  if (!start) {{ try {{ start = localStorage.getItem('diverted.lang') || 'en'; }} catch (e) {{ start = 'en'; }} }}
+  pick(start);
+  document.querySelectorAll('.lang').forEach(function (b) {{ b.addEventListener('click', function () {{ pick(b.dataset.lang); }}); }});
+  window.addEventListener('hashchange', function () {{ pick((location.hash || '').replace('#', '')); }});
+}})();
+</script>
 <div class="scanlines" aria-hidden="true"></div>
 <div class="vignette-overlay" aria-hidden="true"></div>
 </body>
 </html>
 """
-# wrap tables for horizontal scrolling on phones
-html = html.replace('<table>', '<div class="tablewrap"><table>').replace('</table>', '</table></div>')
+import json
+html = html.replace('{back_json}', json.dumps(BACK, ensure_ascii=False)).replace('{titles_json}', json.dumps(titles, ensure_ascii=False))
 open(os.path.join(ROOT, 'design.html'), 'w', encoding='utf8').write(html)
 print('design.html written,', len(html), 'chars')

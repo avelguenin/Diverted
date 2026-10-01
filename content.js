@@ -198,8 +198,9 @@ CONTENTS.en = (() => {
   scenes.boarding = {
     art: 'gate',
     loc: 'London Heathrow · Jetbridge · Seat 31B',
-    enter: (G) => { if (G.once('welcome_mail')) G.msg('email', { from: 'Albion Atlantic', subj: 'Welcome aboard AB 0271', body: 'Dear Customer,\n\nWelcome aboard Albion Atlantic flight AB 0271 to Los Angeles. Your flight is on time.\n\nOur cabin crew are here to ensure your safety and comfort. The safety of our customers is tantamount.\n\nEnjoy your flight.' }); },
-    text: p(
+    enter: (G) => { if (G.once('welcome_mail')) G.msg('email', { from: 'Albion Atlantic', subj: 'Welcome aboard AB 0271', body: 'Dear Customer,\n\nWelcome aboard Albion Atlantic flight AB 0271 to Los Angeles. Your flight is on time.\n\nOur cabin crew are here to ensure your safety and comfort. The safety of our customers is tantamount.\n\nAs a valued customer you are invited to accept a complimentary upgrade to Business Class for this flight. Business Class customers enjoy a quieter cabin and are trusted to find their own way.\n\nEnjoy your flight.', actions: [{ label: 'Accept the complimentary upgrade', if: (G) => !G.has('business') && !G.has('at_hotel'), do: (G) => { G.flag('business'); G.nerves(-2); G.dread(4); G.note('You accepted the upgrade. Nothing changed about your seat. An attendant brought a warm towel, and the purser, passing, said ' + V('“Business,”') + ' to himself, and made a small mark.'); } }] }); },
+    text: (G) => p(
+      G.last(),
       'The jetbridge smells of kerosene and carpet. At the aircraft door, the purser: tall, silver at the temples, a smile that was ironed with the shirt. He does not look at boarding passes. He looks at faces, one at a time, and says ' + V('“Welcome aboard”') + ' to each of them as if he will need to remember it.',
       'Row 31. An aisle seat, 31B. In 31C, a man about your age with a paperback he has already stopped reading. He nods. You nod. That is the whole conversation, and it will be for some time.',
       'Somewhere behind you, a two-year-old is being told, patiently, that the plane is not going yet. The plane is not going yet.',
@@ -1040,16 +1041,16 @@ CONTENTS.en = (() => {
     lift: {
       art: 'corridor', title: 'THE LIFT', kind: 'bad',
       hint: 'Out of order, in Arial.', blurb: 'You got into the lift that came on its own.',
-      text: p(
-        'The doors close with the courtesy of a good hotel. The mirror at the back shows you: the plane clothes, the face, the little bag from the 10-11 if you have it. The lift goes down. It goes down for longer than the building has floors.',
+      text: (G) => p(
+        G.has('toothpaste') ? 'The doors close with the courtesy of a good hotel. The mirror at the back shows you: the plane clothes, the face, the little bag from the 10-11 held against your chest. The lift goes down. It goes down for longer than the building has floors.' : 'The doors close with the courtesy of a good hotel. The mirror at the back shows you: the plane clothes, the face, the hands with nothing in them. The lift goes down. It goes down for longer than the building has floors.',
         'When the doors open, it is onto warm light and rows of seats, and everyone in them turns to look at you, and smiles, and the purser says, ' + V('“Thank you for your patience,”') + ' and means it.',
       ),
     },
     tantalus: {
       art: 'carpark', title: 'TANTALUS', kind: 'bad',
       hint: 'You have always wanted to visit Iceland.', blurb: 'You went to the hot springs.',
-      text: p(
-        'The water is 38°C and the sky is the colour of a used tissue and you are wearing the socks from the flight because you have no other socks. It is, objectively, beautiful.',
+      text: (G) => p(
+        G.has('toothpaste') ? 'The water is 38°C and the sky is the colour of a used tissue and you are wearing the socks from the 10-11, the most beautiful socks you have ever seen, now full of sulphur. It is, objectively, beautiful.' : 'The water is 38°C and the sky is the colour of a used tissue and you are wearing the socks from the flight because you have no other socks. It is, objectively, beautiful.',
         'At 11:00 a bus leaves a hotel car park thirty kilometres away without you. At 11:04 an email arrives to say your coach departed at 09:00. At 11:05 the chatbot asks whether you enjoyed your stay.',
         'Sure wish you hadn\'t been holding that monkey\'s paw when you said it.',
       ),
@@ -1090,8 +1091,8 @@ CONTENTS.en = (() => {
     collective: {
       art: 'plane', title: 'THE SELF-GOVERNING COLLECTIVE OF LHR–LAX', kind: 'good',
       hint: 'Hearsay is not an official channel.', blurb: 'You made it, and so did everyone you talked to.',
-      text: p(
-        'On the stairs somebody laughs, and then everybody does, and the rain does not matter. You have been travelling together for over twenty-eight hours. You have a QR code, a man in a fleece, a man from 31C, and a toddler who has seen things.',
+      text: (G) => p(
+        'On the stairs somebody laughs, and then everybody does, and the rain does not matter. You have been travelling together for over twenty-eight hours. ' + (G.has('uk261') ? 'You have a QR code, a man in a fleece, ' : 'You have a man in a fleece, ') + (G.has('met31c') || G.has('ally31c') ? 'a man from 31C, ' : '') + 'and a toddler who has seen things.',
         'The most accurate and helpful information during this entire ordeal came from paper printouts in Arial and random passengers conveying hearsay. Nobody in a uniform ever said sorry. It turns out you didn\'t need them to.',
         'See you in Los Angeles. On behalf of the self-governing collective of LHR–LAX, you wish the man in intensive care well.',
       ),

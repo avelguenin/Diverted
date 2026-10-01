@@ -151,24 +151,52 @@ Both reference games are low-resolution, murky, and let you *look* at the thing 
 - **Bus portraits.** Each coach card has an illustration generated from a small spec (`livery`, `windows`, `passengers`, `sign`, `driver`). This is the *No, I'm Not a Human* peephole: the tells are visible before you read a word, if you know to look. The crested coach has warm, bright windows and one identical upright silhouette in every window. The plain coach has dim windows and passengers slumped at different heights, some windows empty, one with two people. The Flybus has luggage racks. The lagoon shuttle has towels. The driver wears a hi-vis, a navy jacket with a white collar, or nothing in particular. None of this is labelled; a second run teaches you to read it.
 - **The frame.** A single dark theme, deliberately: it is 2am in a closed airport in every scene. Surfaces are a warm near-black with a 4px dither pattern; panels have a two-pixel bevel with a hard shadow, like a 1990s dialog box that has been left in a smoking room. Body text is set in VT323 (a terminal face) at 21px for legibility, labels and titles in Press Start 2P, both from Google Fonts with Courier fallbacks. Both gauges are segmented bars: nerves in red, shaking at the top; dread in the airline's navy-to-gold, glowing at the top. A full-page vignette darkens the corners and faint scanlines sit over everything. The phone keeps its own modern system-font styling on purpose: it is the one clean, corporate, well-designed object in the game, and it is the one lying to you.
 
+## 7b. Sound design
+
+Everything is synthesised in `audio.js` with the Web Audio API — noise, a few oscillators, filters — so there are still no media files. Sound starts on the first click (browsers require a gesture) and a ♪ control in the top bar mutes it, remembered between visits.
+
+Each scene key has its own soundscape, crossfaded over two seconds when the scene changes:
+
+- **Cabin**: a 55 Hz engine drone under brown noise, a faint hiss, and every so often the seatbelt chime — the "spoon on a glass" — which also fires on entering the diversion scene.
+- **Heathrow gate and jetbridge**: a hall murmur, a two-tone PA chime now and then.
+- **Keflavík arrivals**: fluorescent buzz at 50 and 100 Hz, a faint hall wash, the tube above the bag counter ticking every few seconds, and once in a while the floor-cleaning machine passing (a slow swell of filtered noise).
+- **Coach stand**: wind (band-passed brown noise with two slow LFOs), a 32 Hz diesel idle with a square-wave chug, rain.
+- **The road**: engine drone, road noise, a slow rumble.
+- **Room 214**: the heating at 60 Hz, a low wash, and every half-minute or so a small click from the corridor.
+- **Corridor**: near silence, the ice machine grinding for two seconds at a time, and, rarely, the lift cable — a three-second triangle tone.
+- **Lobby**: the coffee machine's hum, the glass doors sliding open for nobody.
+- **Car park**: harder wind, gravel.
+- **Departures**: murmur, a fluorescent edge, the split-flap board flipping (fourteen clicks), the PA chime.
+- **The tarmac bus**: engine and rain on a roof. **The apron**: rain on metal and a jet spooling.
+- **The void** (the empty title vignette and the darkest ending): a 30 Hz drone and a slow heartbeat thud.
+
+On top of the scene, **dread** adds a detuned pair of sine waves around 40 Hz whose level rises with the tier (silent at tiers 0–1, audible from 2) and whose pitch drops as the tier climbs; from tier 5 a barely-there 9 kHz whine joins it. One-shot cues are fired by the engine: a two-pulse buzz for every message, five even thuds when the knock scenes open (it is the same knock whether you are in the room or the corridor), a square-wave blip when the airline notes you, a low thud and a dying 55 Hz tone on a bad ending, a rising two-note on a good one, and the split-flap clatter when the title board changes language.
+
 ## 8. Interface
 
 - **Two panes: the world and the phone.** The thread was written *on a phone, in the situation*, so the phone is a permanent second character. On desktop it is a sticky column with a battery that runs down over the day; on mobile it is a bottom sheet behind a PHONE button with an unread badge. Toasts announce arrivals so the player feels the buzz at the same moment the narrator does.
 - **The departure-board aesthetic.** Amber on black, monospace, a faint scanline, a title that flickers every few seconds. Email gets the airline's navy-and-gold header; the chatbot gets rounded bubbles and emoji; paper gets Arial and a stain. Each channel *looks* like its level of trustworthiness, which is the joke.
+- **Sound control**: the ♪ in the top bar. Off by default only if you switched it off last time.
+- **Business Class**: the welcome email at boarding offers a complimentary upgrade. Accept it and nothing changes about your seat — but the bus cards lose all their written tells (name, sign, the Look-closer lines) and leave you the pixel portraits alone to read, exactly as the airline's wording promised: "trusted to find their own way". It costs a little dread on acceptance. It is the difficulty mode, chosen in-fiction and never named as one.
 - **The clock is always visible** because every horror beat in the source is a timing beat (the email at 9:40 about 9:00; the counter at exactly 3 hours). Time only advances through choices; there is no real-time pressure, so reading is always free.
 - **Accessibility:** pixel fonts fall back to Courier if Google Fonts is unreachable; body text is 21px for the terminal face's legibility; no information is carried by colour alone; `prefers-reduced-motion` disables all animation including the vignette redraws; `aria-live` on the status bar and toasts; keyboard-focusable choices; canvases are `aria-hidden` because every visual tell is also written on the card.
 
 ## 9. Technical choices
 
-- **Vanilla HTML/CSS/JS, no build.** The requirement is GitHub Pages; the simplest thing that deploys there is static files, and a text game does not need a framework. `engine.js` is ~370 lines and knows nothing about the story; `content.js` is the story and knows nothing about the DOM; `art.js` knows nothing about either and only paints what it is asked to.
+- **Vanilla HTML/CSS/JS, no build.** The requirement is GitHub Pages; the simplest thing that deploys there is static files, and a text game does not need a framework. `engine.js` knows nothing about the story; `content.js` is the story and knows nothing about the DOM; `art.js` and `audio.js` know nothing about either and only paint, or play, what they are asked to.
 - **Scenes are plain objects with function-valued fields.** Text, location, choices and even bus lists can be `(G) => …` so they react to time and flags. This keeps conditional narrative in one place instead of scattering scene variants.
 - **A tiny scheduled-message queue** (`S.sched`, drained by `advance()`) is what makes the "email arrives 30 minutes after you boarded" gag work mechanically rather than as a line of prose.
 - **Seeded RNG per run** (`mulberry32`) so a run is reproducible from its seed if you ever want to add a "share this run" feature.
 - **`localStorage` only for the endings gallery, a run counter and the last language**, guarded with `try/catch` for private windows. No save-in-progress: runs are 20 minutes and permadeath is the point.
 
-## 10. Things I'd add with more time
+## 10. Things considered, and what was decided
 
-- A **"What happened"** post-mortem after each death showing the tell you missed (NINAH-style), pulled from the bus's `hidden` array.
-- **Sound**: a single looping air-handling hum, a phone buzz, and nothing else.
-- A **second night** for players who miss the flight non-fatally, with the hotel emptier and the crested coach parked closer.
-- **Difficulty**: a "Business Class" mode that removes the written tells from the bus cards, leaving only the pixel portraits to read.
+- **A "what happened" post-mortem after each death, showing the tell you missed** — rejected. Explicit instructions are against the spirit of the game. The endings gallery keeps its one-line hints, which is as far as the game will go toward explaining itself; the rest is for a second run.
+- **Sound** — done (§7b), one soundscape per scene rather than a single hum.
+- **A second night for players who miss the flight non-fatally** — rejected. Missing the flight is an ending, and stays one. Bad endings imply something vague and sinister (the sign taken down, the booking that cannot be found, the coffee machine clearing its throat) and stop there; they are never softened into a continuation.
+- **A "Business Class" difficulty that removes the written tells from the bus cards** — done, as the complimentary upgrade in the welcome email (§8).
+- **The prose never hedges on state.** Wherever the text depends on what the player did — the bag from the 10-11, the socks, the QR code, the man from 31C — it resolves the condition and says what is true, never "if you have it". This is a rule now, and the lift ending was the bug that made it one.
+
+## 11. The design notes themselves
+
+This document is part of the design, and it is delivered like the game: `design.html` is generated from the Markdown in the game's own style, exists in all four languages, opens in whatever language the interface is showing when you click the link on the title screen, and carries a visible switcher at the top (EN · FR · ÍS · FI). The translations were made with the same tooling and the same revision pass as the game text; the English is the source of truth, and where they disagree, the English is right.

@@ -22,14 +22,16 @@ Open `index.html` in a browser, or host it on GitHub Pages (below).
    content.fr.js
    content.is.js
    content.fi.js
+   audio.js
    design.html
+   DESIGN.fr.md, DESIGN.is.md, DESIGN.fi.md
    README.md
    DESIGN.md
    ```
 2. On GitHub: **Settings → Pages → Build and deployment → Source: “Deploy from a branch”**, branch `main`, folder `/ (root)`. Save.
 3. After a minute the game is live at `https://<your-username>.github.io/diverted/`.
 
-There is nothing to compile. Every file is served as-is; `index.html` loads `art.js`, the four content files, then `engine.js`. `design.html` is the design document rendered in the game's style, linked from the title screen; regenerate it with `python3 tools/build_design.py` after editing `DESIGN.md` (needs `pip install markdown`).
+There is nothing to compile. Every file is served as-is; `index.html` loads `art.js`, the four content files, then `engine.js`. `design.html` is the design document rendered in the game's style (four languages), linked from the title screen; regenerate it with `python3 tools/build_design.py` after editing the `DESIGN*.md` files (needs `pip install markdown`).
 
 ## Files
 
@@ -37,11 +39,12 @@ There is nothing to compile. Every file is served as-is; `index.html` loads `art
 |---|---|
 | `index.html` | The page skeleton: header with clock and meters, scene panel, phone panel. |
 | `style.css` | All visual design: pixel fonts, bevelled panels, dither, scanlines, vignette. Responsive; the phone becomes a bottom sheet under 900px. |
+| `audio.js` | Procedural sound: one Web Audio soundscape per scene, event cues (phone buzz, knock, chime), a dread drone, a mute toggle. No audio files. |
 | `art.js` | Procedural pixel art: a painter per scene (flickering vignettes) and a bus-portrait generator whose details are the tells. No image files. |
 | `engine.js` | The runner: scene graph, clock, scheduled messages, the two gauges and option gating, bus inspection, language switching, endings gallery (`localStorage`). No framework. |
 | `content.js` | Every word in the game (English): scenes, choices, messages, the chatbot's answers, buses, 12 endings, interface strings. This is the file to edit if you want to change the story. |
 | `content.fr.js`, `content.is.js`, `content.fi.js` | The French, Icelandic and Finnish versions, generated from `content.js` by string substitution (see DESIGN.md §5c). Edit the English, update the dictionary, and run `python3 tools/i18n.py build fr tools/dict_fr.json tools/dict_fr_broken.json` (French), `python3 tools/i18n.py build is tools/dict_is.json`, `python3 tools/i18n.py build fi tools/dict_fi.json`. |
-| `design.html` | `DESIGN.md` rendered as a page in the game's style; linked from the title screen. |
+| `design.html` | The design notes rendered as a page in the game's style, in all four languages with a switcher; linked from the title screen in the interface's language. Built from `DESIGN.md`, `DESIGN.fr.md`, `DESIGN.is.md`, `DESIGN.fi.md`. |
 | `tools/` | `i18n.py` and the dictionaries (`dict_fr.json`, `dict_fr_broken.json`, `dict_is.json`, `dict_fi.json`), `build_design.py`, and `playtest.js` (automated playtest policies; needs Node and Playwright). Not needed to play or deploy. |
 | `DESIGN.md` | Design rationale — what was borrowed from *No, I'm Not a Human* and *Don't Look Outside*, how the source thread was adapted, why each mechanic exists. |
 
