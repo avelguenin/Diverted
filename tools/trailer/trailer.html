@@ -1,0 +1,123 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+@font-face { font-family: 'VT323'; src: url('vt323.woff2') format('woff2'); }
+@font-face { font-family: 'PS2P'; src: url('ps2p.woff2') format('woff2'); }
+html, body { margin: 0; background: #0b0a09; width: 1280px; height: 720px; overflow: hidden; }
+#stage { position: relative; width: 1280px; height: 720px; background: #0b0a09; color: #cfc8b4; font-family: 'VT323', monospace; }
+.dither { position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,.035) 1px, transparent 1px); background-size: 4px 4px; pointer-events: none; }
+.scan { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 2px, transparent 2px 4px); pointer-events: none; }
+.vig { position: absolute; inset: 0; box-shadow: inset 0 0 180px rgba(0,0,0,.85); pointer-events: none; }
+.header { position: absolute; left: 0; right: 0; top: 0; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; border-bottom: 2px solid #2a2520; background: #0b0a09; }
+.brand { font-family: 'PS2P'; font-size: 13px; color: #e2a640; letter-spacing: .12em; text-shadow: 0 0 10px rgba(226,166,64,.5); }
+.brand small { color: #837b68; font-size: 8px; margin-left: 18px; letter-spacing: .1em; }
+.meters { display: flex; gap: 26px; align-items: center; font-family: 'PS2P'; font-size: 8px; color: #837b68; letter-spacing: .1em; }
+.track { display: inline-block; width: 150px; height: 12px; border: 2px solid #2a2520; background: #15130f; margin-left: 10px; vertical-align: middle; box-shadow: inset -2px -2px 0 #0b0a09; }
+.fill { display: block; height: 100%; }
+.fill.n { background: linear-gradient(90deg, #7a2a22, #c8362c); }
+.fill.d { background: linear-gradient(90deg, #15223a, #2e4f8f); }
+.art { position: absolute; left: 80px; top: 96px; width: 1120px; height: 504px; image-rendering: pixelated; border: 3px solid #2a2520; box-shadow: 0 0 0 3px #0b0a09, inset 0 0 60px rgba(0,0,0,.6); background: #000; }
+.cap { position: absolute; left: 80px; right: 80px; top: 616px; font-size: 34px; line-height: 1.2; color: #cfc8b4; }
+.cap .voice { color: #e2a640; font-style: italic; }
+.cap .whisper { color: #837b68; }
+.board { position: absolute; left: 70px; top: 270px; font-family: 'PS2P'; font-size: 15px; line-height: 2.1; color: #e2a640; letter-spacing: .08em; text-shadow: 0 0 12px rgba(226,166,64,.55); white-space: pre; }
+.board span { display: inline-block; width: 30px; text-align: center; }
+.big { position: absolute; left: 0; right: 0; top: 230px; text-align: center; font-family: 'PS2P'; font-size: 96px; color: #e2a640; letter-spacing: .1em; text-shadow: 0 0 24px rgba(226,166,64,.6), 0 0 60px rgba(226,166,64,.25); }
+.sub { position: absolute; left: 0; right: 0; top: 380px; text-align: center; font-family: 'PS2P'; font-size: 14px; color: #837b68; letter-spacing: .14em; line-height: 2.4; }
+.sub b { color: #cfc8b4; font-weight: normal; }
+.bubble { display: inline-block; background: #15130f; border: 2px solid #2a2520; padding: 8px 18px; box-shadow: inset -2px -2px 0 #0b0a09, 0 0 0 2px #0b0a09; }
+.bubble.sms { color: #cfc8b4; }
+.bubble.ally { border-color: #2e4f8f; box-shadow: inset -2px -2px 0 #0b0a09, 0 0 0 2px #0b0a09, 0 0 22px rgba(46,79,143,.5); }
+.choice { position: absolute; left: 80px; right: 80px; top: 612px; font-size: 32px; padding: 12px 22px; border: 3px solid #2a2520; background: linear-gradient(90deg, rgba(27,42,74,.55), rgba(27,42,74,.15)); box-shadow: inset -3px -3px 0 #0b0a09, 0 0 0 3px #0b0a09, 0 0 30px rgba(201,162,39,.25); color: #cfc8b4; }
+.choice::before { content: '✦ '; color: #c9a227; }
+.buses { position: absolute; left: 80px; top: 96px; width: 1120px; height: 504px; display: flex; gap: 24px; }
+.bus { flex: 1; border: 3px solid #2a2520; background: #0b0a09; box-shadow: 0 0 0 3px #0b0a09; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+.bus canvas { width: 100%; image-rendering: pixelated; border: 2px solid #2a2520; }
+.bus .name { font-size: 26px; line-height: 1.15; color: #cfc8b4; }
+.bus .sign { font-family: 'PS2P'; font-size: 11px; padding: 8px; letter-spacing: .06em; }
+.sign.paper { background: #ece6d3; color: #1a1a1a; font-family: Arial, sans-serif; font-size: 18px; }
+.sign.led { background: #000; color: #f2b632; font-size: 9px; text-shadow: 0 0 8px rgba(242,182,50,.7); }
+.sign.print { background: #c7c3b6; color: #1a1a1a; font-family: Arial, sans-serif; font-size: 18px; }
+.phonepanel { position: absolute; right: 80px; top: 96px; width: 360px; height: 504px; background: #0a0b0d; border: 3px solid #2a2520; box-shadow: 0 0 0 3px #0b0a09; font-size: 24px; }
+.phonetop { display: flex; justify-content: space-between; padding: 10px 16px; font-size: 16px; color: #8f958f; border-bottom: 1px solid #1c1e22; }
+.chat { padding: 16px; }
+.chat .b { background: #11161e; border: 1px solid #1e2a3f; padding: 10px 14px; margin: 8px 0; line-height: 1.2; }
+.fade { position: absolute; inset: 0; background: #000; pointer-events: none; }
+</style></head><body><div id="stage"></div>
+<script src="art.js"></script>
+<script>
+const stage = document.getElementById('stage');
+const C = ART.C;
+function seededRng(seed) { let a = seed >>> 0; return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function fakeG(D, flags = {}, extra = {}) { return Object.assign({ D, t: 1440 + 4 * 60, S: Object.assign({ phoneDead: false, batt: 1 }, extra), has: (k) => !!flags[k] }, {}); }
+function paint(key, frame, D, flags, extra) {
+  const cv = document.createElement('canvas'); cv.className = 'art'; cv.width = 160; cv.height = 72;
+  const c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+  const r = seededRng(1000 + frame * 7919);
+  ART.scenes[key](c, r, fakeG(D, flags, extra));
+  return cv;
+}
+function busCanvas(spec, seed) { const cv = document.createElement('canvas'); ART.bus(cv, spec, seed); return cv; }
+const BOARD1 = 'AB 0271   LONDON LHR  →  LOS ANGELES LAX      DEPARTED 20:05';
+const BOARD2 = '                                              STATUS: ▮▮▮▮▮▮▮▮▮▮';
+const BOARD3 = '                                              STATUS: DIVERTED  ';
+const FLAP = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789▮▯·-';
+function header(t) {
+  const n = Math.min(100, Math.max(0, (t - 2) * 9)), d = Math.min(100, Math.max(0, (t - 1.5) * 11));
+  return `<div class="header"><div class="brand">DIVERTED<small>ALBION ATLANTIC · AB 0271 · LHR → LAX</small></div><div class="meters"><span>NERVES<span class="track"><span class="fill n" style="width:${n}%"></span></span></span><span>DREAD<span class="track"><span class="fill d" style="width:${d}%"></span></span></span></div></div>`;
+}
+function render(t, frame) {
+  stage.innerHTML = '';
+  const r = seededRng(77 + frame * 31);
+  let html = '', nodes = [];
+  if (t < 2.2) {
+    // the departure board, which flips to the title
+    let line2;
+    if (t < 1.1) line2 = BOARD2; else { const k = Math.min(1, (t - 1.1) / 0.8); line2 = BOARD3.split('').map((ch, i) => { const target = BOARD3[i], prev = BOARD2[i]; if (target === prev) return ch; const pos = (i - 54) / 10; return k > pos + 0.12 ? target : FLAP[(r() * FLAP.length) | 0]; }).join(''); }
+    html += `<div class="board">${BOARD1}\n${line2}</div>`;
+    if (t > 1.9) html += `<div class="big" style="opacity:${Math.min(1, (t - 1.9) / 0.3)}">DIVERTED</div>`;
+  } else if (t < 4.0) {
+    html += header(t);
+    nodes.push(paint('cabin', frame, 1, {}));
+    const k = t - 2.2;
+    html += `<div class="cap">${k > 0.2 ? '<span class="voice">“A customer is unwell. We are diverting to Reykjavík.”</span>' : ''}${k > 1.0 ? ' He is sorry. He says the word twice.' : ''}</div>`;
+  } else if (t < 5.6) {
+    html += header(t);
+    const k = t - 4.0;
+    const specs = [
+      ['A white coach with no livery at all', 'ALBION ATL → HOTEL', 'paper', { livery: '#c7c3b6', windows: 'dim', passengers: 'slumped', sign: 'paper', driver: 'hivis', ground: 'night' }],
+      ['A navy coach with a gold crest on the flank', 'ALBION ATLANTIC WELCOMES YOU', 'led', { livery: '#1b2a4a', stripe: '#c9a227', windows: 'warm', passengers: 'upright', sign: 'led', driver: 'purser', ground: 'night' }],
+      ['A yellow bus in city livery', 'FLYBUS · REYKJAVÍK BSÍ', 'print', { livery: '#cfae36', windows: 'dim', passengers: 'luggage', sign: 'print', driver: 'plain', ground: 'night' }],
+    ];
+    const grid = document.createElement('div'); grid.className = 'buses';
+    specs.forEach(([name, sign, style, spec], i) => { const d = document.createElement('div'); d.className = 'bus'; d.style.opacity = Math.min(1, Math.max(0, (k - i * 0.25) / 0.3)); d.appendChild(busCanvas(spec, 11 + i * 31)); const n = document.createElement('div'); n.className = 'name'; n.textContent = name; d.appendChild(n); const s = document.createElement('div'); s.className = 'sign ' + style; s.textContent = sign; d.appendChild(s); grid.appendChild(d); });
+    nodes.push(grid);
+    html += `<div class="cap">${k > 0.9 ? '<span class="bubble sms">+354 ··· ····&nbsp;&nbsp; dont get on the nice one</span>' : ''}</div>`;
+  } else if (t < 7.0) {
+    html += header(t);
+    const k = t - 5.6;
+    const cv = paint('room', frame, 5, { seen: k > 0.7, looked1: true }); cv.style.width = '740px'; nodes.push(cv);
+    html += `<div class="phonepanel"><div class="phonetop"><span>▮▯▯▯ · 4G</span><span>04:50</span><span style="color:#c8362c">3%</span></div><div class="chat"><div class="b">Hi! I see you're in room 214. The coach is waiting for you in the car park.</div>${k > 0.5 ? '<div class="b" style="border-color:#2e4f8f">Please do not look out of the window. 🙂</div>' : ''}</div></div>`;
+    html += `<div class="cap"><span class="whisper">There is something on your phone you have not read.</span></div>`;
+  } else if (t < 8.4) {
+    html += header(t);
+    const k = t - 7.0;
+    const cv = paint('phone', frame, 5, {}, { phoneDead: true, batt: 0 });
+    // drive the painter's own clock so the screen dies on cue
+    cv._t0 = Date.now() - Math.max(0, (k - 0.1)) * 1000 * 3.5;
+    nodes.push(cv);
+    html += `<div class="choice" style="opacity:${Math.min(1, Math.max(0, (k - 0.6) / 0.3))}">Put it face down. Go back to sleep. Hope you wake up.</div>`;
+  } else {
+    const k = t - 8.4;
+    html += `<div class="big" style="top:200px">DIVERTED</div><div class="sub" style="top:330px">A HOSPITALITY HORROR · TEXT · 20–30 MINUTES<br><b>EN · FR · ÍS · FI</b><br><br>${k > 0.5 ? '<span style="color:#cfc8b4">Best played with earphones, and the sound on.</span>' : ''}</div>`;
+    if (k > 1.2) html += `<div class="fade" style="opacity:${Math.min(1, (k - 1.2) / 0.4)}"></div>`;
+  }
+  stage.innerHTML = html + '<div class="dither"></div><div class="scan"></div><div class="vig"></div>';
+  nodes.forEach((n) => stage.insertBefore(n, stage.firstChild.nextSibling || null));
+  // put art behind captions: append after header
+  nodes.forEach((n) => { stage.appendChild(n); });
+  // keep overlays on top
+  ['dither', 'scan', 'vig'].forEach((cls) => stage.appendChild(stage.querySelector('.' + cls)));
+  if (t < 2.2 && t > 0 && r() < 0.08) stage.querySelector('.board').style.opacity = '0.85';   // a flicker
+}
+window.renderFrame = render;
+</script></body></html>
