@@ -82,12 +82,12 @@ function mulberry(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = 
     await page.evaluate(() => { Game.newRun(); Game.setLang('en'); });
     const seq = ['Lane A', 'Say hello to 31C', 'Look out of the window at London', 'Order a coffee', 'Ask 31C if he saw', 'Ask a flight attendant', 'Look around', '“I don\'t think', 'Count the rows', 'Ask 31C', 'Find a human', 'Thank her', 'Talk to the man in the fleece', 'Talk to the woman with the toddler', 'Find the man from 31C', 'Go where the fleece'];
     let gated = 0; const gl = [];
-    const step = async (label) => { const s = await snapshot(); const g = s.choices.filter((c) => c.gated); gated += g.length; g.forEach((c) => gl.push(s.scene + ':' + c.label.slice(0, 30))); await clickChoice(label); };
+    const step = async (label) => { let s = await snapshot(); if (s.scene === 'phone_dies') { await clickChoice('Put it face down'); s = await snapshot(); } const g = s.choices.filter((c) => c.gated); gated += g.length; g.forEach((c) => gl.push(s.scene + ':' + c.label.slice(0, 30))); if (!s.choices.some((c) => c.label.includes(label.replace(/\.$/, '')))) return; await clickChoice(label); };
     for (const l of seq) await step(l);
     await boardPlain();
     for (const l of ['Laugh.', 'Go up to the room', 'Make tea', 'Look up your rights', 'Go out into the corridor', 'Knock on 216', 'Down to the lobby', 'The vending machine', 'Wake the passengers', 'Back up to the corridor', 'Back into your room', 'Eat.', 'Shower.', 'Post about it']) await step(l);
     let s = await snapshot();
-    while (s.scene === 'room') { await step('Try to sleep.'); s = await snapshot(); }
+    while (s.scene === 'room' || s.scene === 'phone_dies') { await step('Try to sleep.'); s = await snapshot(); }
     for (const l of ['The sign said 11:00', 'Don\'t. Put the phone', 'Get a second coffee']) await step(l);
     for (const l of ['Show the UK261', 'Compare notes', 'Talk to the toddler', 'Wait in the lobby', 'Wait in the lobby', 'Wait in the lobby', 'Wait in the lobby', 'Wait in the lobby']) { s = await snapshot(); if (s.scene !== 'hotel_morning') break; await step(l); }
     s = await snapshot(); while (s.scene === 'hotel_morning') { await step('Wait in the lobby'); s = await snapshot(); }

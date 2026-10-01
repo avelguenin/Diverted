@@ -90,6 +90,15 @@ const AUDIO = (() => {
   scapes.airport = (L) => { murmur(L, 0.07); hum(L, 100, 0.008); L.add(noise('brown'), filter('lowpass', 700, 0.5), gain(0.05)); L.every(8000, 22000, () => { const t = ctx.currentTime; for (let i = 0; i < 14; i++) burst(t + i * 0.035, 0.02, 2600, 8, 0.05, L.out); }); L.every(25000, 60000, () => { const t = ctx.currentTime; tone(t, 660, 0.35, 0.04, L.out); tone(t + 0.35, 880, 0.5, 0.04, L.out); }); };
   scapes.tarmac = (L) => { drone(L, 44, 0.07); L.add(noise('brown'), filter('lowpass', 260, 0.6), gain(0.16)); rain(L, 0.05, 3500); };
   scapes.plane = (L) => { rain(L, 0.09, 3000); L.add(noise('brown'), filter('lowpass', 900, 0.6), gain(0.05)); const g = gain(0.03); L.add(osc('sawtooth', 70), filter('lowpass', 400, 1), g); lfo(0.05, 0.015, g.gain); };
+  // the phone, dying or filling: almost nothing. The room's heating, far off, and a thin tone that is the phone itself, until it isn't.
+  scapes.phone = (L) => { L.add(noise('brown'), filter('lowpass', 120, 0.7), gain(0.03)); const g = gain(0.012); L.add(osc('sine', 11000), g); lfo(0.6, 0.006, g.gain); L.every(2500, 6000, () => { const t = ctx.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0, t + 1.2); }); };
+  // BSÍ at closing time: a big cold hall, one diesel idling, a tannoy that says something once
+  scapes.bsi = (L) => { hum(L, 50, 0.012); L.add(noise('brown'), filter('lowpass', 400, 0.5), gain(0.07)); const g = gain(0.05); L.add(osc('sawtooth', 38), filter('lowpass', 120, 2), g); lfo(0.3, 0.02, g.gain); L.every(20000, 45000, () => { const t = ctx.currentTime; tone(t, 520, 0.3, 0.04, L.out); burst(t + 0.4, 1.6, 900, 0.8, 0.05, L.out, 'brown'); }); L.every(4000, 9000, () => burst(ctx.currentTime, 0.5, 2200, 1.5, 0.02, L.out)); };
+  // a city street at four in the morning: wind in wires, a car that does not slow, a gull
+  scapes.street = (L) => { wind(L, 0.06, 900); L.add(noise('brown'), filter('lowpass', 200, 0.6), gain(0.04)); L.every(9000, 25000, () => { const g = gain(0); L.add(noise('brown'), filter('bandpass', 500, 1.2), g); const t = ctx.currentTime; g.gain.linearRampToValueAtTime(0.08, t + 2.5); g.gain.linearRampToValueAtTime(0, t + 5); }); L.every(30000, 80000, () => { const t = ctx.currentTime; tone(t, 1400, 0.25, 0.03, L.out, 'triangle'); tone(t + 0.3, 1250, 0.3, 0.02, L.out, 'triangle'); }); };
+  // the guesthouse: a fridge, a clock, a kettle somebody else put on
+  scapes.guesthouse = (L) => { hum(L, 60, 0.01); L.add(noise('brown'), filter('lowpass', 140, 0.8), gain(0.04)); L.every(900, 1100, () => burst(ctx.currentTime, 0.015, 2800, 10, 0.025, L.out)); L.every(25000, 60000, () => { const g = gain(0); L.add(noise('white'), filter('bandpass', 3000, 0.7), g); const t = ctx.currentTime; g.gain.linearRampToValueAtTime(0.05, t + 6); g.gain.linearRampToValueAtTime(0, t + 9); }); };
+
   scapes.void = (L) => { drone(L, 30, 0.05); L.every(900, 1400, () => thud(ctx.currentTime, 60, 0.25, 0.12, L.out)); };
 
   /* ---------------------------------------------------------- dread underneath */
@@ -170,6 +179,8 @@ const AUDIO = (() => {
     if (name === 'end') { thud(t, 70, 0.9, 0.35); tone(t + 0.1, 55, 2.5, 0.06); }
     if (name === 'good') { tone(t, 660, 0.4, 0.06); tone(t + 0.4, 880, 0.6, 0.06); }
     if (name === 'noted') { tone(t, 220, 0.12, 0.08, null, 'square'); }
+    if (name === 'dead') { const o = osc('sine', 1800), g = gain(0); o.connect(g); g.connect(master); g.gain.setValueAtTime(0.06, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.9); o.frequency.setValueAtTime(1800, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.9); o.start(t); o.stop(t + 1); burst(t + 1.0, 0.02, 1200, 6, 0.08); }
+    if (name === 'flood') { for (let i = 0; i < 14; i++) { const d = i * 0.11 + Math.random() * 0.03; burst(t + d, 0.05, 180, 2, 0.1, null, 'brown'); if (i % 3 === 0) tone(t + d, 830, 0.2, 0.03); } }
   }
   function toggle() {
     muted = !muted;

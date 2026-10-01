@@ -71,8 +71,9 @@ hivis purser plain crest city lagoon en fr fi good bad'''.split()) | {
  'ALBION ATL → HOTEL', 'FLIGHT PPL – HOTEL', 'FLIGHT PPL AIRPORT', 'ALBION ATLANTIC WELCOMES YOU', 'FLYBUS · REYKJAVÍK BSÍ',
  'AIRPORT TRANSFER · ALBION ATLANTIC', 'BLUE LAGOON SHUTTLE — Relax. You deserve it.', 'AB 0271 · LOS ANGELES · ', '</em>. ',
  'Hótel Hraun · Room 214 · ', 'Hótel Hraun · Second floor corridor · ', 'Albion Atlantic Customer Care', 'Hótel Hraun · Room 214',
+ 'ALBION ATLANTIC · YOUR ACCOMMODATION', 'FLYBUS · KEF AIRPORT', 'AB0271: 04:30.', 'AB0271: Do not reply.', 'STOP is not a recognised command.', 'AB0271: Final notice.',
 }
-SKIP_PREFIX = ('<b>PASSENGERS', '<b>ALBION ATLANTIC AB0271</b>', '<b>EVACUATION PLAN')
+SKIP_PREFIX = ('<b>PASSENGERS', '<b>ALBION ATLANTIC AB0271</b>', '<b>EVACUATION PLAN', '<b>FLYBUS')
 
 ALLOW = {'arrived'}
 def translatable(raw):
@@ -108,7 +109,7 @@ def unescape_raw(raw):
     # source form -> real text (only the escapes we use)
     return raw.replace("\\'", "'").replace('\\n', '\n').replace('\\\\', '\\').replace('\\`', '`')
 
-KEEP_LOCAL = {'fr'}   # languages where locals keep speaking English (LX lines untouched)
+KEEP_LOCAL = {'fr', 'fi'}   # languages where locals keep speaking English (LX lines untouched): they have no Finnish, and only halting French
 
 def build(lang, dictfile, brokenfile=None):
     src = open(SRC, encoding='utf8').read()

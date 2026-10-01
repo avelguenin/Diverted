@@ -79,6 +79,7 @@ const Game = (() => {
       flags: {}, once: {}, inbox: [], chat: [], sched: [], mid: 0,
       buses: {}, looked: {}, scene: null,
       dread: CONTENT.start.dread, last: null, ambLast: {}, counts: {},
+      batt: 31, phoneDead: false, backlog: [], drainB: 0,
     };
   }
 
@@ -100,7 +101,7 @@ const Game = (() => {
     // scheduled message at absolute minute `at`; fx runs on delivery.
     at: (at, ch, m) => { S.sched.push(Object.assign({ at, ch }, m)); S.sched.sort((a, b) => a.at - b.at); },
     // bot-initiated chat line
-    bot: (text) => { S.chat.push({ who: 'bot', text, read: false, t: S.t }); AUDIO.event('buzz'); toast(CONTENT.ui.tAlly + ' · ' + text.slice(0, 60) + (text.length > 60 ? '…' : '')); },
+    bot: (text, dd) => { if (S.phoneDead) { S.backlog.push({ ch: 'chat', body: text, at: S.t, dd }); return; } S.chat.push({ who: 'bot', text, read: false, t: S.t, dd }); AUDIO.event('buzz'); toast(CONTENT.ui.tAlly + ' · ' + text.slice(0, 60) + (text.length > 60 ? '…' : '')); },
     go: (id) => { pendingGo = id; },
     end: (id) => { pendingGo = 'end:' + id; },
     advance: (m) => advance(m),
@@ -130,7 +131,20 @@ const Game = (() => {
       S.ambLast[key] = l;
       return typeof l.t === 'function' ? l.t() : l.t;
     },
-    battery: () => Math.max(2, 31 - Math.floor((S.t - CONTENT.start.t) / 45)),
+    battery: () => S.batt,
+    dead: () => S.phoneDead,
+    // the phone: a percentage that runs down with the clock (faster in the small hours at a hotel) and with use
+    batt: (d) => { S.batt = Math.max(0, Math.min(100, S.batt + d)); if (S.batt === 0 && !S.phoneDead) { S.phoneDead = true; S.deadAt = S.t; } },
+    // plugging it in: it comes back at `pct`, and everything that arrived while it was dark lands at once
+    charge: (pct) => {
+      S.batt = Math.max(S.batt, pct); S.phoneDead = false;
+      const n = S.backlog.length;
+      S.backlog.forEach((m) => { if (m.ch === 'chat') S.chat.push({ who: 'bot', text: m.body, read: false, t: m.at != null ? m.at : S.t, dd: m.dd }); else { const st = m.at != null ? m.at : m.stamp; deliver(Object.assign({}, m, { stamp: st }), true); } });
+      S.backlog = [];
+      if (n) { toast(CONTENT.ui.tFlood.replace('{n}', n)); AUDIO.event(n > 6 ? 'flood' : 'buzz'); }
+      return n;
+    },
+    openPhone: (tab) => { ui.tab = tab || ui.tab; ui.open = null; ui.phoneOpen = true; $('#phone').classList.add('open'); },
     lang: (code) => setLang(code),
     get ui() { return CONTENT.ui; },
   };
@@ -143,7 +157,8 @@ const Game = (() => {
     setTimeout(() => t.remove(), 4200);
   }
 
-  function deliver(m) {
+  function deliver(m, force) {
+    if (S.phoneDead && !force) { S.backlog.push(m); return; }
     m.id = ++S.mid;
     m.arrived = S.t;
     if (m.stamp == null) m.stamp = S.t;
@@ -160,9 +175,13 @@ const Game = (() => {
     while (S.sched.length && S.sched[0].at <= target) {
       const m = S.sched.shift();
       S.t = Math.max(S.t, m.at);
-      if (m.ch === 'chat') { S.chat.push({ who: 'bot', text: m.body, read: false, t: S.t }); AUDIO.event('buzz'); toast(CONTENT.ui.tAlly + ' · ' + m.body.slice(0, 60)); if (m.fx) m.fx(G); }
+      if (m.ch === 'chat') { if (S.phoneDead) S.backlog.push(m); else { S.chat.push({ who: 'bot', text: m.body, read: false, t: S.t, dd: m.dd }); AUDIO.event('buzz'); toast(CONTENT.ui.tAlly + ' · ' + m.body.slice(0, 60)); } if (m.fx) m.fx(G); }
       else deliver(m);
     }
+    // the phone runs down: one point every 30 minutes, every 12 in the small hours
+    S.drainB = (S.drainB || 0) + min;
+    const per = (target >= DAY && target < DAY + 390) ? 12 : 30;
+    while (S.drainB >= per) { S.drainB -= per; if (!S.phoneDead && S.batt > 0) G.batt(-1); }
     // drift: hours awake fray the nerves; the small hours feed the dread
     S.drain = (S.drain || 0) + min;
     while (S.drain >= 40) { S.drain -= 40; S.nerves = Math.min(100, S.nerves + 1); }
@@ -196,7 +215,8 @@ const Game = (() => {
     const sc = id === 'lane' ? LANE : CONTENT.scenes[id];
     if (!sc) { console.error('missing scene', id); return; }
     S.scene = id;
-    if (id === 'knock' || id === 'knock2' || id === 'corridor_knock') AUDIO.event('knock');
+    if (id === 'knock' || id === 'knock2' || id === 'corridor_knock' || id === 'lind_knock' || id === 'lind_lobby_knock') AUDIO.event('knock');
+    if (id === 'phone_dies' || id === 'bsi') AUDIO.event('dead');
     if (id === 'cabin' || id === 'takeoff') AUDIO.event('chime');
     if (sc.enter) {
       sc.enter(G);
@@ -421,7 +441,8 @@ const Game = (() => {
     root.dataset.nv = String(title ? 0 : G.N);
     root.style.setProperty('--nv', title ? 0 : (S.nerves / 100).toFixed(2));
     root.style.setProperty('--dr', title ? 0 : (S.dread / 100).toFixed(2));
-    const batt = $('.phone-batt'); const b = G.battery(); batt.textContent = b + '%'; batt.classList.toggle('low', b <= 10);
+    const batt = $('.phone-batt'); const b = G.battery(); batt.textContent = S.phoneDead ? '—' : b + '%'; batt.classList.toggle('low', b <= 10);
+    $('#phone').classList.toggle('dead', !!S.phoneDead);
   }
 
   // at high dread the clock is occasionally wrong for a moment
@@ -440,6 +461,9 @@ const Game = (() => {
     return S.inbox.filter((m) => m.ch === ch && !m.read).length;
   }
 
+  // a message can carry a dread cost that is only paid when it is read
+  function costOf(m) { if (m.dd && !m.costed) { m.costed = true; G.dread(m.dd); renderStatus(); } }
+
   function renderPhone() {
     ['email', 'chat', 'sms', 'paper'].forEach((ch) => {
       const n = unreadCount(ch);
@@ -451,6 +475,7 @@ const Game = (() => {
 
     const body = $('#phone-body');
     body.innerHTML = '';
+    if (S.phoneDead) { body.appendChild(el('div', 'dead-screen', `<span>${esc(CONTENT.ui.phoneDead)}</span>`)); return; }
     if (ui.tab === 'chat') return renderChat(body);
     if (ui.tab === 'paper') return renderPaper(body);
     if (ui.tab === 'sms') return renderSms(body);
@@ -470,7 +495,7 @@ const Game = (() => {
     list.forEach((m) => {
       const row = el('button', 'msg-row' + (m.read ? '' : ' unread'));
       row.innerHTML = `<div class="from">${esc(m.from)}<span class="when">${esc(stampText(m))}</span></div><div class="subj">${esc(m.subj)}</div>`;
-      row.onclick = () => { m.read = true; ui.open = m; renderPhone(); };
+      row.onclick = () => { m.read = true; ui.open = m; costOf(m); renderPhone(); };
       body.appendChild(row);
     });
   }
@@ -492,7 +517,7 @@ const Game = (() => {
 
   function renderSms(body) {
     const list = S.inbox.filter((m) => m.ch === 'sms');
-    list.forEach((m) => { m.read = true; });
+    list.forEach((m) => { m.read = true; costOf(m); });
     if (!list.length) { body.appendChild(el('div', 'empty', CONTENT.ui.noSms)); return; }
     const log = el('div', 'chat-log sms');
     list.forEach((m) => {
@@ -514,7 +539,7 @@ const Game = (() => {
   }
 
   function renderChat(body) {
-    S.chat.forEach((m) => { m.read = true; });
+    S.chat.forEach((m) => { m.read = true; costOf(m); });
     const log = el('div', 'chat-log');
     if (!S.chat.length) log.appendChild(el('div', 'bubble sys', CONTENT.ui.allyIntro));
     S.chat.forEach((m) => log.appendChild(el('div', 'bubble ' + m.who, esc(m.text))));
@@ -529,6 +554,7 @@ const Game = (() => {
         const ans = typeof r.answer === 'function' ? r.answer(G) : r.answer;
         S.chat.push({ who: 'bot', text: ans, read: true, t: S.t });
         if (r.do) r.do(G);
+        G.batt(-1);
         advance(r.time || 2);
         const f = check();
         if (f) return show(f);

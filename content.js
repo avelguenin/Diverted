@@ -25,6 +25,8 @@ CONTENTS.en = (() => {
   const CONTENT_BROKEN = {};
   const LX = (s) => { try { const S = (typeof Game !== 'undefined' ? Game : window.Game).state; if (S && S.flags.fr_asked && CONTENT_BROKEN[s]) return CONTENT_BROKEN[s]; } catch (e) { /* ignore */ } return s; };
   const atLeast = (G, v) => { if (G.S.dread < v) G.S.dread = v; }; // v in percent
+  // the chatbot is called Ally, but the narration only calls it that once the player has opened it
+  const ALLY = (G) => (G.S.chat.some((m) => m.who === 'bot' && m.read) ? 'Ally' : 'the airline\'s chatbot');
   const hub = (G, status, key, extra) => p(status, G.last(), G.amb(key, AMB[key]), extra);
   const KNOCK_AT = T(1, 4, 30);
 
@@ -126,14 +128,15 @@ CONTENTS.en = (() => {
   const tail = (G) => {
     const d = G.D;
     if (d >= 5) return '\n\n' + G.pick(['Why are you still here?', 'The majority of customers have boarded.', 'We can see that you are still there.']);
-    if (d >= 3) return '\n\n' + G.pick(['You are still in room 214.', 'Please remain where you are.', 'Is there anything else? There is nothing else.']);
+    if (d >= 3) return '\n\n' + G.pick([G.has('lind') ? 'You are still in room 7.' : 'You are still in room 214.', 'Please remain where you are.', 'Is there anything else? There is nothing else.']);
     return '';
   };
   const chat = [
     {
       label: 'Where is my hotel?',
       answer: (G) => {
-        if (G.has('at_airport2')) return 'Your accommodation was Hótel Hraun. We hope you enjoyed your stay! Would you like to leave a review?' + tail(G);
+        if (G.has('at_airport2')) return (G.has('lind') ? 'Your accommodation was Hótel Hraun. Our records show you did not use it. Would you like to leave a review?' : 'Your accommodation was Hótel Hraun. We hope you enjoyed your stay! Would you like to leave a review?') + tail(G);
+        if (G.has('lind')) return 'Your accommodation is Hótel Hraun. You are at Hótel Lind, room 7. Please return to your accommodation.' + tail(G);
         if (G.has('at_hotel')) return 'You are at Hótel Hraun, room 214. Please remain in your room until collected.' + tail(G);
         return 'Great question! Your accommodation has been arranged at the Heathrow Renaissance Lodge, Bath Road. A booking link has been emailed to you. 🛏️';
       },
@@ -142,7 +145,9 @@ CONTENTS.en = (() => {
       label: 'When is the bus?',
       answer: (G) => {
         if (G.has('at_airport2')) return 'Your coach to the aircraft departs once boarding is complete. Please board by group. 🚌' + tail(G);
+        if (G.has('morning') && G.has('lind')) return 'Your transfer from Hótel Lind is confirmed for 09:00. Please wait in the lobby. 🚌' + tail(G);
         if (G.has('morning')) return 'Your transfer to the airport is confirmed for 08:00. Please be in the lobby 15 minutes early.' + tail(G);
+        if (G.has('lind')) return 'A vehicle has been arranged to return you to your accommodation at 04:30. A member of staff will knock.' + tail(G);
         if (G.has('at_hotel')) return 'Your coach departs at 04:30. A member of staff will knock.' + tail(G);
         return 'Coaches have been organised for all customers. Please proceed to the coaches. 🚌';
       },
@@ -183,8 +188,9 @@ CONTENTS.en = (() => {
       '<em>Read everything.</em> Your phone (on the right, or under the PHONE button) gets mail from the airline, a chatbot called Ally, texts, and photographs of any printed sign you come across. Somebody is telling the truth. It is not always who has the logo.',
       '<em>Two bars.</em> Both of them fill. Neither one ends the game. What they do is close doors: as a bar fills, some of what you could have said or done stops being available, and what is left is what is left. Small choices fill them. Sleep, food, and other people empty them, a little.',
       '<em>Noted</em> counts the complaints the airline has recorded against you. At three, they act on it — where they can.',
+      '<em>The battery</em> is a number in the corner of the phone. It goes down. When it reaches nothing, so does the phone, and whatever arrives after that arrives to nobody, until you find a way to bring it back — and then it all arrives at once.',
       'Places are rooms you can move around in. Doing things takes minutes; the clock only moves when you act. Buses come and go. Look closely at them before you get on. The right one will look like you feel.',
-      'Runs take twenty to thirty minutes. There are twelve endings, and one of them is Los Angeles.',
+      'Runs take twenty to thirty minutes. There are thirteen endings, and one of them is Los Angeles.',
     ),
     choices: [{ label: 'Back', next: 'title' }],
   };
@@ -291,9 +297,9 @@ CONTENTS.en = (() => {
       'A hush. The man near the galley sits down. The call button goes out. Three rows back, somebody laughs once, and stops.',
       G.has('objected') && W('He is not looking at the man near the galley. He is looking at your row.'),
     ),
-    choices: [
+    choices: (G) => [
       { label: 'Sit with it.', kind: 'comply', dd: 3, time: 15, do: (G) => G.note('You sat with it. Everyone did. It is remarkable how quickly two hundred people can decide to have been patient all along.'), next: 'cabin2' },
-      { label: 'Look around. See who else objected.', time: 15, do: (G) => { G.nerves(-2); G.note('Four faces, maybe five, still set. The man near the galley. A woman with a toddler. You memorise them the way you would memorise exits.'); }, next: 'cabin2' },
+      { label: G.has('objected') ? 'Look around. See who else objected.' : 'Look around. See who objected.', time: 15, do: (G) => { G.nerves(-2); G.note('Four faces, maybe five, still set. The man near the galley. A woman with a toddler. You memorise them the way you would memorise exits.'); }, next: 'cabin2' },
       { label: 'Laugh. Once.', kind: 'conflict', nd: 3, dd: -2, time: 15, do: (G) => G.note('You laughed, once, and somebody two rows back laughed with you, and then you both stopped, because the purser had put the handset down very gently and was looking down the aisle.'), next: 'cabin2' },
     ],
   };
@@ -518,7 +524,7 @@ CONTENTS.en = (() => {
         sign: 'FLYBUS · REYKJAVÍK BSÍ', signStyle: 'print',
         look: ['Driver, bored, checking a tablet.', 'Passengers with rucksacks and wheeled bags.'],
         hidden: ['They have luggage. You do not have luggage.', 'A sticker by the door: TICKET REQUIRED.'],
-        board: { time: 5, next: 'detour' },
+        board: { time: 5, next: 'bsi' },
       };
       return G.shuffle([correct, crest, flybus]);
     },
@@ -527,16 +533,49 @@ CONTENTS.en = (() => {
     ],
   };
 
-  scenes.detour = {
-    art: 'road',
-    loc: 'Route 41 · toward Reykjavík',
-    text: p(
+  /* ---------------------------------------------------------------- the wrong bus: BSÍ, 02:50 */
+  scenes.bsi = {
+    art: 'bsi',
+    loc: 'Reykjavík · BSÍ bus terminal',
+    enter: (G) => {
+      G.S.t = Math.max(G.t, T(1, 2, 50)); G.flag('detoured'); G.nerves(10); G.dread(6);
+      if (G.once('bsi_dead')) { G.S.batt = 0; G.S.phoneDead = true; G.S.deadAt = G.t; }
+    },
+    text: (G) => p(
       'Forty minutes into the ride, a backpacker asks which hostel you\'re at, and you understand.',
-      'The bus lets you off at a terminal in the city that smells of diesel and cinnamon. A taxi driver takes pity, and 9,800 krónur, and drives you back out into the dark to a hotel that has been told to expect you and is not sure it believes it.',
-      'It is 03:35. You have the clothes you are wearing. Not even the good ones.',
+      'The bus lets you off at a terminal in the city that smells of diesel and cinnamon. It is closing. A kiosk is pulling its shutter down; the backpackers are already walking away, in the direction of beds that are theirs.',
+      'You get the phone out to look up where you are. It shows 3%, then the map, then a black screen with your face in it. You press the button. You press it again. Nothing. The time is gone with it; the terminal has a clock, and the clock has stopped.',
+      'And in the far bay, engine running, interior lights on, every seat facing the terminal: a navy coach with a gold crest.',
     ),
-    enter: (G) => { G.S.t = T(1, 3, 35); G.nerves(18); G.flag('detoured'); G.dread(8); },
-    choices: [{ label: 'Go in.', next: 'hotel_arrive' }],
+    buses: (G) => [{
+      key: 'crest',
+      art: { livery: '#1b2a4a', stripe: '#c9a227', windows: 'warm', passengers: 'upright', sign: 'led', driver: 'purser', ground: 'night' },
+      name: 'A navy coach with a gold crest, idling in the far bay',
+      sign: 'ALBION ATLANTIC · YOUR ACCOMMODATION', signStyle: 'led',
+      look: ['The purser at the door, hands folded, as if he had been told you were coming.', 'Warm. Quiet. Plenty of seats.'],
+      hidden: ['The passengers are rested. Nobody has a phone out. Nobody needs one.', 'The destination on the LED is not a place. It is a word.'],
+      board: { kind: 'comply', do: (G) => G.end('crew') },
+    }],
+    choices: [
+      { label: 'Find a taxi. There is a rank by the doors.', whyNot: 'You cannot turn your back on the coach.', dreadMax: 88, dd: -3, time: 10, next: 'taxi' },
+      { label: 'Sit in the terminal. Somebody will come.', kind: 'comply', dd: 6, time: 20, once: 'bsi_sit', do: (G) => { G.nerves(4); G.note('Twenty minutes on a plastic seat. The cleaners worked round you. The coach did not leave. At some point a man in a hi-vis vest came and stood in the doorway and said, in English, not unkindly, ' + V(LX('“We are closing. Taxi is outside.”'))); }, next: 'bsi' },
+    ],
+  };
+
+  /* ---- the taxi, and the only person all night who takes you where you ask ---- */
+  scenes.taxi = {
+    art: 'road',
+    loc: 'A taxi · Reykjavík, outbound',
+    enter: (G) => { if (G.once('taxi_in')) G.note(p(G.last(), 'A taxi, warm, smelling of pine and somebody\'s dinner. The driver is sixty or so, with a radio on low in Icelandic that may be the weather, and he looks at you in the mirror for a while before he says anything. ' + V(LX('“Albion Atlantic?”')) + ' You have not said a word. ' + V(LX('“The clothes. Everybody off that flight looks like they slept in a chair. Where to?”')))); },
+    text: (G) => p(G.last(), 'The meter is running. Outside, the city is three streets deep, and then it is dark.'),
+    choices: (G) => [
+      { label: 'Show him the email. The Heathrow Renaissance Lodge, Bath Road.', time: 3, once: 'taxi_mail', do: (G) => { G.nerves(-2); G.note(V(LX('“Heathrow.”')) + ' He reads it twice in the mirror and laughs, a short laugh that is not at you. ' + V(LX('“Every night somebody shows me this one. Every night it says Heathrow. I can take you to the airport and you can fly there, if you like. Otherwise it is not a very useful email.”')) + ' He hands the phone back carefully, as if it might be catching.'); }, next: 'taxi' },
+      { label: 'Ask him what he knows about the flight.', nd: -2, time: 5, once: 'taxi_week', do: (G) => { G.flag('driver_week'); G.collect(1); G.note(V(LX('“Your flight? I know your flight. Everybody who drives nights knows your flight.”')) + ' He counts on the fingers of his free hand. ' + V(LX('“Monday it came in at one. Tuesday, one. Wednesday, Thursday, tonight. Same number, same hour, two hundred people with no coats. Every night the airline tells them a car is waiting outside. Every night I am outside, and I am not the car. Nobody from that company has rung me, or paid me, or anybody I know.”')) + ' A pause, and the wipers. ' + V(LX('“The people, I take where they ask. The trouble is most of them don\'t know where to ask.”'))); }, next: 'taxi' },
+      { label: 'Ask him where the others went.', if: (G) => G.has('driver_week'), nd: -1, time: 4, once: 'taxi_where', do: (G) => { G.flag('driver_where'); G.note(V(LX('“Out past the lava, somewhere. A white bus takes them, when there is a white bus. Which hotel — I don\'t know. There are five out there and they all look like a conference that never came.”')) + ' He glances at you in the mirror. ' + V(LX('“If you can tell me which one, I will take you. If you can\'t, I will take you where I take everyone who can\'t: a guesthouse in town. The woman who runs it is always awake. Small place, clean, the price is honest, and she has had one of you every night this week.”'))); }, next: 'taxi' },
+      { label: 'Ask him to take you back to the airport instead.', time: 3, once: 'taxi_back', do: (G) => { G.nerves(2); G.dread(2); G.note(V(LX('“Keflavík is closed until five. I can drive you forty minutes to a locked door, if you want to pay for it.”')) + ' He does not sound as if he is joking. He does not sound as if he would refuse, either.'); }, next: 'taxi' },
+      { label: 'Tell him about the white coach. The paper sign, the driver in hi-vis, the one you did not get on.', whyNot: 'You would not be civil about it, and he is the only one who has asked.', nerveMax: 70, if: (G) => G.has('driver_where') && (G.S.looked['buses1:plain'] || G.did('talk_fleece') || G.did('talk_mother') || G.did('talk_couple') || G.has('ally31c')), sub: '9,800 krónur, he says, to go out there. The card worked on the third try at the vending machine.', time: 40, do: (G) => { G.flag('taxi_hraun'); G.S.t = T(1, 3, 35); G.nerves(6); G.dread(2); G.note(V(LX('“The white ones. Yes. That is Hraun. Forty minutes. Nine thousand eight hundred, and I would like it on the card before we leave the lights, if you don\'t mind. I have been burned this week.”')) + ' The card works. The city ends. Lava, under a low sky, and a road with one white line that keeps disappearing. He does not talk, and the radio does. At 03:35 he turns in at a low, wide hotel lit like an aquarium, and says ' + V(LX('“Good luck,”')) + ' in the voice of a man who means it and does not expect it to help.'); }, next: 'hotel_arrive' },
+      { label: 'The guesthouse, then. Anywhere with a bed and a light on.', kind: 'comply', dd: 4, time: 8, do: (G) => { G.flag('gunnar'); G.note(V(LX('“Lind. Good. Three minutes.”')) + ' Four corners, a narrow door with a lamp over it, and a meter that says less than you feared. He flashes his headlights at the door, twice, and a light comes on behind the frosted glass. ' + V(LX('“Tell her Gunnar sent you. She will know what that means by now.”'))); }, next: 'lind_arrive' },
+    ],
   };
 
   /* ---------------------------------------------------------------- the ride */
@@ -581,7 +620,7 @@ CONTENTS.en = (() => {
   };
 
   /* ---- the room (hub) ---- */
-  const roomStatus = (G) => `Room 214. ${G.clock(G.t)}. You are too tired to sleep${G.has('toothpaste') ? '' : ', and your teeth are dirty'}${G.has('dinner') ? '' : ', and you have not eaten'}.`;
+  const roomStatus = (G) => `Room 214. ${G.clock(G.t)}. You are too tired to sleep${G.has('toothpaste') ? '' : ', and your teeth are dirty'}${G.has('dinner') ? '' : ', and you have not eaten'}${G.dead() ? ', and the phone is dead' : G.battery() <= 10 ? `, and the phone is at ${G.battery()}%` : ''}.`;
 
   scenes.room = {
     art: 'room',
@@ -590,6 +629,7 @@ CONTENTS.en = (() => {
       G.flag('loc_room');
       if (G.t >= KNOCK_AT && !G.has('knocked')) { G.go('knock'); return; }
       if (G.t >= T(1, 6, 0)) { G.flag('allnighter'); G.go('sleep'); return; }
+      if (G.dead() && !G.has('phone_scene')) { G.go('phone_dies'); return; }
       if (G.once('room_intro')) G.note(p(G.last(), 'A bed, a kettle, a television, a window onto the car park, and tiny bottles of shampoo and conditioner you are already thinking about brushing your teeth with. The door has a chain. You put the chain on. Then you take it off, in case, and put it on again.'));
     },
     text: (G) => hub(G, roomStatus(G), 'room'),
@@ -603,9 +643,9 @@ CONTENTS.en = (() => {
       { label: 'Check the door.', nd: 2, time: 2, do: (G) => { const n = G.count('door'); G.note(n === 1 ? 'Locked. Chain on. You check the chain. You check the lock. Fine.' : n === 2 ? 'Still locked. Still chained. You knew that.' : n === 3 ? 'You check the door again. You are aware of checking the door again. It is locked. It has always been locked. You stand with your hand on it for a while.' : 'Locked. You do not know what you are checking for any more. Whether it is locked, or whether it is still a door.'); if (n >= 3) G.dread(1); }, next: 'room' },
       { label: 'Listen at the door.', whyNot: 'You do not want to know.', nd: 3, dreadMax: 90, time: 4, do: (G) => { const d = G.D; G.dread(2); G.nerves(3); G.note(G.pick(d >= 4 ? ['Footsteps. Slow, even, stopping at each door. Stopping at yours. Going on.', 'A trolley, wheeled, at the far end. It stops. It does not start again.', 'Knocking, a long way down the corridor. Patient. Then nearer.'] : ['Nothing. The corridor hum. A door, far off, closing.', 'Somebody walks past, quickly, in socks. Somebody else, slowly, in shoes.', 'The ice machine, grinding, from the end of the corridor. Then a laugh, one door down, cut short.'])); }, next: 'room' },
       { label: 'Call reception from the room phone.', kind: 'comply', dd: 1, time: 5, once: 'roomphone', do: (G) => { G.dread(2); G.note('It rings for a long time. Then the clerk, sounding as if she has been asleep or has never been asleep: ' + V(LX('“Yes, 214?”')) + ' You had not said your room number. You ask about the bus. ' + V(LX('“Eleven. It says eleven. Maybe you should sleep.”'))); }, next: 'room' },
-      { label: 'Look up your rights.', whyNot: 'Rights feel like a foreign country.', dd: -6, dreadMax: 85, sub: G.did('post') ? 'There is a regulation. Somebody in your mentions is sure of it.' : 'There is a regulation. You are almost sure there is a regulation.', time: 15, once: 'rights', do: (G) => { G.flag('uk261'); G.nerves(-6); G.msg('paper', { from: 'Screenshot, then a QR code you made yourself', subj: 'UK261', body: '<b>UK261 / EC261 — YOUR RIGHTS</b>\n\nOn a delay of this length the airline must provide: meals, hotel, transport, and communications.\n\nThey will fight. Claim anyway.\n\n[ QR CODE ]' }); G.note('UK261. <em>The airline must provide.</em> You read it twice. You make it into a QR code, on the hotel wifi, at three in the morning, and you do not know why, except that you are going to show it to everyone you see at breakfast.'); }, next: 'room' },
-      { label: 'Post about it.', time: 8, once: 'post', do: (G) => { if (G.D >= 4) { G.nerves(4); G.note('You type it all out — the crew, the door, the email, the bus — and press post, and the little wheel turns, and turns. One bar. No bars. The post sits there, unsent, addressed to nobody.'); } else { G.nerves(-3); G.note('You post it. Lol, you write. Lmao. Within ten minutes: 1.4K likes, and forty people telling you about the hot springs. You put the phone face down on the duvet.'); } }, next: 'room' },
-      { label: 'Charge the phone.', nd: 2, time: 2, once: 'charge', do: (G) => { G.nerves(3); G.note(`The charger is in the bag. The bag is in the system. The phone is at ${G.battery()}%, and it knows it, and it dims the screen to tell you.`); }, next: 'room' },
+      { label: 'Look up your rights.', whyNot: 'Rights feel like a foreign country.', dd: -6, dreadMax: 85, if: (G) => !G.dead(), sub: G.did('post') ? 'There is a regulation. Somebody in your mentions is sure of it.' : 'There is a regulation. You are almost sure there is a regulation.', time: 15, once: 'rights', do: (G) => { G.flag('uk261'); G.nerves(-6); G.batt(-2); G.msg('paper', { from: 'Screenshot, then a QR code you made yourself', subj: 'UK261', body: '<b>UK261 / EC261 — YOUR RIGHTS</b>\n\nOn a delay of this length the airline must provide: meals, hotel, transport, and communications.\n\nThey will fight. Claim anyway.\n\n[ QR CODE ]' }); G.note('UK261. <em>The airline must provide.</em> You read it twice. You make it into a QR code, on the hotel wifi, at three in the morning, and you do not know why, except that you are going to show it to everyone you see at breakfast.'); }, next: 'room' },
+      { label: 'Post about it.', time: 8, once: 'post', if: (G) => !G.dead(), do: (G) => { G.batt(-3); if (G.D >= 4) { G.nerves(4); G.note('You type it all out — the crew, the door, the email, the bus — and press post, and the little wheel turns, and turns. One bar. No bars. The post sits there, unsent, addressed to nobody.'); } else { G.nerves(-3); G.note('You post it. Lol, you write. Lmao. Within ten minutes: 1.4K likes, and forty people telling you about the hot springs. You put the phone face down on the duvet.'); } }, next: 'room' },
+      { label: 'Charge the phone.', nd: 2, time: 2, once: 'charge', if: (G) => !G.dead(), do: (G) => { G.nerves(3); G.note(`The charger is in the bag. The bag is in the system. The phone is at ${G.battery()}%, and it knows it, and it dims the screen to tell you.`); }, next: 'room' },
       { label: 'Try to sleep.', whyNot: 'You cannot lie still.', nerveMax: 80, time: 25, do: (G) => { if (G.t + 25 >= T(1, 4, 5)) { G.S.t = Math.max(G.t, KNOCK_AT - 25); G.nerves(-2); G.dread(-1); G.note('You lie down in the plane clothes with the light on. The ceiling is very close. You are almost, almost—'); } else { G.nerves(-4); G.dread(-3); G.note(G.pick(['You lie down. Your body is on Pacific time, or on no time. The ceiling has a stain shaped like an island. You watch it for a while. Nothing.', 'Eyes closed. The engine of the coach — of a coach — somewhere below the window, or in your ears. You sit back up.', 'You get under the duvet in your clothes. It is like being a parcel. Sleep looks at you from across the room and does not come over.'])); } }, next: 'room' },
       { label: 'Go out into the corridor.', time: 2, next: 'corridor' },
     ],
@@ -619,6 +659,7 @@ CONTENTS.en = (() => {
       G.flag('loc_corridor');
       if (G.t >= KNOCK_AT && !G.has('knocked')) { G.go('corridor_knock'); return; }
       if (G.t >= T(1, 6, 0)) { G.flag('allnighter'); G.go('sleep'); return; }
+      if (G.dead() && !G.has('phone_scene')) { G.go('phone_dies'); return; }
       if (G.once('corr_intro')) G.note(p(G.last(), 'Long, low, carpeted in something the colour of a bruise. Doors: 210, 212, 214 — yours — 216, 218, on down to a fire door with a bar across it and a window of wired glass. An ice machine hums at the far end. A lift, with a paper sign on it.'));
     },
     text: (G) => hub(G, `The corridor. ${G.clock(G.t)}. Every door is closed. Yours is the one with the light on.`, 'corridor'),
@@ -689,6 +730,22 @@ CONTENTS.en = (() => {
       { label: 'Get on. It\'s warm.', kind: 'comply', do: (G) => G.end('convenience') },
       { label: 'Keep walking. Do not look at the door.', whyNot: 'You cannot turn your back on it.', dreadMax: 75, dd: -14, time: 30, do: (G) => { G.nerves(12); G.flag('toothpaste'); G.nerves(-10); G.dread(8); G.note('The coach idled beside you for a long time, and then it didn\'t. The 10-11 was lit like a shrine. Toothpaste. A toothbrush. Socks, in a three-pack, the most beautiful socks you have ever seen. You walked back with the bag held against your chest. Nothing passed you on the road. Nothing at all, which was somehow worse.'); }, next: 'carpark' },
       { label: 'Turn around. Walk back to the hotel. Fast.', kind: 'comply', dd: 6, time: 15, do: (G) => { G.nerves(8); G.dread(5); G.note('You did not run. You walked, fast, with the coach behind you, idling, keeping pace, and then not. The lobby doors slid open before you reached them.'); }, next: 'carpark' },
+    ],
+  };
+
+  /* ---- the phone dies ---- */
+  scenes.phone_dies = {
+    art: 'phone',
+    loc: (G) => `Hótel Hraun · Room 214 · ${G.clock(G.t)}`,
+    enter: (G) => { G.flag('phone_scene'); G.dread(4); },
+    text: (G) => p(
+      G.last(),
+      'The phone, face up on the duvet, shows 1%. It has shown 1% for a while, the way a held breath lasts. You are looking at it when it happens: the screen dims to the colour of the room, and then to the colour of nothing, and in the black glass there is your face, lit by nothing, looking back.',
+      'The charger is in the bag. The bag is in the system. The clock on the wall is the only one you have now, and it is a hotel clock, and you do not trust it.',
+      'Whatever they send next, you will not hear it arrive. Whatever they have arranged, they have arranged it with a phone that is dead. You lie there, in the plane clothes, with the dark slab in your hand, and the heating thinks about knocking.',
+    ),
+    choices: [
+      { label: 'Put it face down. Go back to sleep. Hope you wake up.', kind: 'comply', dd: 8, time: 20, do: (G) => { G.nerves(-2); G.note('You put it face down, which does nothing, and lie back, which does nothing, and listen to the building. Sleep is not the word for what comes.'); }, next: 'room' },
     ],
   };
 
@@ -773,6 +830,7 @@ CONTENTS.en = (() => {
       G.S.dread = Math.max(20, G.S.dread - 25); // daylight helps, a little
       G.nerves(G.has('allnighter') ? 6 : G.has('coffee') ? -5 : -10);
       if (G.has('toothpaste')) G.nerves(-6);
+      if (G.dead() || G.battery() < 20) { G.flag('borrowed_cable'); G.charge(35); }
       G.at(T(1, 7, 35), 'sms', { from: 'Jo 💛', body: 'OMG YOU\'RE IN ICELAND?? you have to do the blue lagoon. HAVE TO. it\'s like 20 min from the airport' });
       G.at(T(1, 8, 5), 'chat', { body: 'Good morning! Your transfer to the airport is confirmed for 08:00. Please be in the lobby. 🚌' });
       G.at(T(1, 9, 40), 'email', { from: 'Albion Atlantic Customer Care', subj: 'Your transfer to the airport', stamp: T(1, 9, 40), body: 'Dear Customer,\n\nCoaches will collect you from your accommodation at 09:00 for your rebooked flight AB 0271.\n\nPlease be ready in the lobby at 08:45.\n\nWe are doing our best.' });
@@ -781,6 +839,7 @@ CONTENTS.en = (() => {
     text: (G) => p(
       G.has('allnighter') ? 'Grey light. 07:30. You did not sleep, and you are still in Iceland.' : 'Grey light. 07:30. You slept, or something like it, and you are still in Iceland.',
       'Breakfast is skyr, bread, and a coffee that tastes like it was made by someone who had heard coffee described. The room is full of your flight. Everyone is wearing what they wore yesterday. Everyone is comparing notes: which hotel, which pickup time, which of the three conflicting messages they have chosen to believe.',
+      G.has('borrowed_cable') && 'Somebody at the next table has a cable that fits. You plug the phone into the socket by the toaster and it comes back, slowly, the way a face does, and the first thing it does is tell you everything you missed.',
       'The printed sign is still taped to the desk. 11:00. Somebody has drawn a small heart on it.',
     ),
     choices: [{ label: 'Get a second coffee anyway.', time: 10, next: 'hotel_morning' }],
@@ -802,7 +861,7 @@ CONTENTS.en = (() => {
       { label: 'Ask reception if 11:00 is right.', kind: 'comply', dd: 2, time: 10, once: 'recep', do: (G) => { G.nerves(1); G.note('The same clerk. Still. She points at the sign. ' + V(LX('“Another passenger phoned them. They said yes.”')) + ' A pause. ' + V(LX('“Or they said something.”'))); }, next: 'hotel_morning' },
       { label: 'Go back up to the room. Shower. Wash your face, at least.', whyNot: 'You could not stand still under it.', nerveMax: 92, time: 25, once: 'morn_shower', do: (G) => { G.nerves(-5); G.dread(-2); G.note('Hot water. The same clothes. The room in daylight is just a room: the shampoos, the kettle, the window onto a car park with a coach in it. You do not look for long.'); }, next: 'hotel_morning' },
       { label: 'Talk to the toddler\'s mother.', whyNot: 'You would frighten the child.', nd: -3, dd: -3, nerveMax: 80, time: 10, once: 'morn_mother', do: (G) => { G.collect(1); G.nerves(-3); G.note(V('“She would like to be home now,”') + ' the mother says, of the toddler, who is under the table. ' + V('“So would I. Did you hear knocking last night?”') + (G.has('knocked') ? ' You say yes. She says, ' + V('“We didn\'t open it either.”') : ' You say you were downstairs. She looks at you as if that had been a choice. ' + V('“We didn\'t open it.”'))); }, next: 'hotel_morning' },
-      { label: 'Check the flight status on the airline site.', dd: 3, nd: 3, time: 8, do: (G) => { const n = G.count('status'); G.dread(2); G.note(n === 1 ? 'AB 0271 · KEF → LAX · 15:10 · ON TIME. On time for what, it does not say.' : n === 2 ? 'AB 0271 · 15:10 · ON TIME. Then, as you watch, 15:25. Then 15:10 again.' : 'The page will not load. Then it loads, and the flight is not on it. Then it is. 15:10. You put the phone away before it can change again.'); }, next: 'hotel_morning' },
+      { label: 'Check the flight status on the airline site.', dd: 3, nd: 3, time: 8, if: (G) => !G.dead(), do: (G) => { const n = G.count('status'); G.dread(2); G.batt(-1); G.note(n === 1 ? 'AB 0271 · KEF → LAX · 15:10 · ON TIME. On time for what, it does not say.' : n === 2 ? 'AB 0271 · 15:10 · ON TIME. Then, as you watch, 15:25. Then 15:10 again.' : 'The page will not load. Then it loads, and the flight is not on it. Then it is. 15:10. You put the phone away before it can change again.'); }, next: 'hotel_morning' },
       { label: G.t >= T(1, 9, 40) ? 'Go outside and look for the 09:00 coach.' : 'Go outside and look for the 08:00 coach.', kind: 'comply', dd: 5, if: (G) => G.t >= T(1, 8, 5) && G.t < T(1, 10, 0), time: 10, next: 'decoy_morning' },
       { label: 'Go to the hot springs. You have always wanted to.', sub: 'It is twenty minutes away. Everyone says so.', do: (G) => G.end('tantalus') },
       { label: 'Wait in the lobby.', kind: 'comply', dd: 3, nd: 2, sub: 'Half an hour of it.', time: 30, do: (G) => { G.nerves(3); G.dread(2); G.note(G.pick(['Half an hour. The coffee machine, the doors, the sign. A child counts to a hundred and starts again.', 'Half an hour. Somebody\'s phone alarm goes off — set for Los Angeles time — and everyone laughs, and then nobody does.', 'Half an hour. Outside, a coach comes, and is not yours, and goes. You do not get up. Neither does anyone.'])); }, next: 'hotel_morning' },
@@ -920,10 +979,11 @@ CONTENTS.en = (() => {
   scenes.checkin = {
     art: 'airport',
     loc: 'Keflavík · The one counter',
-    enter: (G) => { G.S.t = Math.max(G.t, G.S.dep - 180); if (G.S.strikes >= 3) G.end('left'); },
+    enter: (G) => { G.S.t = Math.max(G.t, G.S.dep - 180); if (G.has('lind')) G.dread(4); if (G.S.strikes >= 3) G.end('left'); },
     text: (G) => p(
       'The counter opens on time, which is to say at the time it had privately decided. The agent takes your passport. Nobody in a uniform has been remotely apologetic all day, even performatively, and this man will not break the streak. ' + V('“We\'re doing our best.”'),
       G.has('booked') && 'He frowns at the screen. ' + V('“Our records show you were accommodated at the Heathrow Renaissance Lodge last night.”') + ' He types something. He says it has been noted.',
+      G.has('lind') && 'He frowns at the screen. ' + V('“Our records show you did not use your arranged accommodation.”') + ' He looks at your clothes, which are the same clothes as everyone else\'s, and at your face, which is cleaner. He types something. He does not say what.',
       G.has('objected') && W('He glances at a small card clipped to the monitor, and then at you.'),
       G.has('seen') && W('He looks at you slightly too long. ' + V('“Room 214,”') + ' he says, not as a question.'),
       'A boarding pass, warm from the printer. Gate 12. It is real. You check it three times.',
@@ -994,6 +1054,403 @@ CONTENTS.en = (() => {
     ],
   };
 
+  /* ================================================================ Hótel Lind: the other hotel
+     If the Flybus took you to the city and the taxi driver took you to the
+     nearest light, you are here: a narrow guesthouse off Laugavegur that the
+     airline never booked, with a clerk who speaks perfect English and has
+     never heard of your flight. Everything is provided. That is the problem. */
+  const lindStatus = (G) => `Room 7. ${G.clock(G.t)}. ${G.dead() ? 'The phone is dead' : `The phone is at ${G.battery()}%`}${G.has('lind_tp') ? '' : ', and your teeth are dirty'}${G.has('lind_ate') ? '' : ', and you have not eaten'}.`;
+  const LIND_AMB = {
+    room: [
+      { d: 1, t: 'A street. A lamp. Somebody walking home, slowly, in no hurry, which seems like an obscene amount of luck.' },
+      { d: 1, t: 'The radiator ticks. The building creaks in the way of a building with people asleep in it.' },
+      { d: 2, t: 'A taxi goes past below, slowly, with its light on, and does not stop for anyone.' },
+      { d: 2, t: 'Through the wall, somebody is snoring in a language.' },
+      { d: 3, t: 'The street has emptied. It did it while you were not looking.' },
+      { d: 3, t: 'Under the lamp opposite, nobody. Then, for a moment, not nobody.' },
+      { d: 4, t: 'A coach engine, somewhere in a street too narrow for a coach, idling.' },
+      { d: 4, t: 'The man under the lamp is not looking at the building. He is looking at one window.' },
+      { d: 5, t: 'The light under your door goes out, and comes back, and goes out.' },
+      { d: 5, t: 'Somebody is on the stairs. They have been on the stairs for some time. They are not coming up and not going down.' },
+    ],
+    lobby: [
+      { d: 1, t: 'The clerk is reading a paperback with a cracked spine. She turns a page. It is the most relaxed thing you have seen since Greenland.' },
+      { d: 1, t: 'A rack of leaflets: GLACIERS · WHALES · NORTHERN LIGHTS. Somebody here will see all of these.' },
+      { d: 2, t: 'From the kitchen, a kettle, and the smell of somebody else\'s toast.' },
+      { d: 2, t: 'The front door is locked. The clerk locked it at midnight. She says so without looking up.' },
+      { d: 3, t: 'A guest comes down in socks, fills a glass of water, and goes back up. He did not look at you. He looked at the door.' },
+      { d: 3, t: 'The paperback has not moved. The clerk is looking at the ceiling, at a sound you have not heard yet.' },
+      { d: 4, t: 'Headlights through the frosted glass of the door, idling, not moving on.' },
+      { d: 4, t: () => 'The clerk says, to the paperback, ' + LX('“He asked for you. I said we had nobody of that name.”') },
+      { d: 5, t: 'The front door is unlocked. The clerk is sure she locked it.' },
+    ],
+    street: [
+      { d: 1, t: 'Frost on the cars. A bakery that will open in three hours for people who are not you.' },
+      { d: 2, t: 'A taxi crosses the end of the street with its light on, slowly, and does not turn in.' },
+      { d: 2, t: 'Somewhere a door closes, and somebody laughs once, indoors, in a warm room.' },
+      { d: 3, t: 'The lamp opposite flickers, steadies, flickers. Under it, nobody. Then nobody again, differently.' },
+      { d: 3, t: 'An engine, idling, somewhere below the hill. It has been idling for a while.' },
+      { d: 4, t: 'The man under the lamp opposite has not moved. He is not looking at you. He is looking at the door you came out of.' },
+      { d: 5, t: 'The clerk is no longer at the glass. The lobby light is on. The lobby is empty.' },
+    ],
+    morning: [
+      { d: 1, t: 'Good coffee. Actual coffee, from a machine with a name. You hold it for a while before you drink it.' },
+      { d: 2, t: 'Two backpackers are planning a day. It involves a glacier. You listen to it the way you would listen to weather on another planet.' },
+      { d: 2, t: 'At the next table, a man in a clean shirt is reading an email and nodding at it.' },
+      { d: 3, t: 'The woman by the window has been here since Tuesday. She says so cheerfully. She says the transfer is confirmed.' },
+      { d: 3, t: 'Nobody at the Albion table has looked at the departures board. They look at their phones, and their phones tell them to wait.' },
+      { d: 4, t: 'Somebody at the Albion table laughs at something their phone said. Everyone at the table laughs. Then they go back to waiting.' },
+      { d: 4, t: 'The clerk puts out more skyr. She has done this before. She has done this every morning this week.' },
+      { d: 5, t: 'There is a seat free at the Albion table. It has a place set. The place has your name on a small card, in Arial.' },
+    ],
+  };
+
+  // the flood: everything the airline sent while the phone was dark, and the things it sends to a customer who has made alternative arrangements
+  function lindFlood(G) {
+    const msgs = [];
+    const E = (subj, body, dd = 2) => msgs.push({ ch: 'email', from: 'Albion Atlantic Customer Care', subj, body, dd });
+    const X = (body, dd = 1) => msgs.push({ ch: 'sms', from: 'AlbionATL', body, dd });
+    const A = (body, dd = 1) => msgs.push({ ch: 'chat', body, dd });
+    E('Your accommodation', 'Dear Customer,\n\nOur records show that you have not checked in at your arranged accommodation.\n\nPlease proceed to your accommodation.\n\nWe are doing our best.');
+    A('We see you have made alternative arrangements. 🙂');
+    X('AB0271: You are not at your accommodation. Please proceed to your accommodation. Do not reply.');
+    A('Your alternative arrangements have been noted.');
+    E('Alternative arrangements — action required', 'Dear Customer,\n\nCustomers who make alternative accommodation arrangements do so at their own risk and expense. Albion Atlantic cannot guarantee onward transport for customers who are not at their arranged accommodation.\n\nPlease return to your accommodation.\n\nWe are doing our best.', 3);
+    X('AB0271: Your hotel is HEATHROW RENAISSANCE LODGE. Do not reply.');
+    A('Where are you? 🙂');
+    A('We are unable to locate you. Please share your location so that we can help. 📍');
+    E('We have been unable to reach you', 'Dear Customer,\n\nWe have attempted to contact you regarding your onward transport and have been unable to reach you.\n\nIt is the customer\'s responsibility to remain contactable.\n\nWe are doing our best.');
+    X('AB0271: Please confirm your location. Reply with your room number.');
+    X('AB0271: Please confirm your location.');
+    X('AB0271: Please confirm.');
+    A('You are at Hótel Lind, room 7.', 3);
+    A('Thank you. 🙂');
+    E('Transfer to your accommodation — arranged', 'Dear Customer,\n\nA vehicle has been arranged to return you to your accommodation.\n\nCollection: Hótel Lind, 04:30.\n\nA member of staff will knock.\n\nWe are doing our best.', 3);
+    X('AB0271: A vehicle will collect you at 04:30 from your current location. Please be ready.');
+    A('Your transfer is confirmed for 04:30. Please remain in your room. 🚌');
+    ['Are you comfortable? 🙂', 'Please remain where you are.', 'Is there anything else? There is nothing else.', 'The majority of customers are at their accommodation.', 'We can see that you are still there.', 'Please do not make further arrangements.'].forEach((t) => A(t));
+    E('Important: customers not at their accommodation', 'Dear Customer,\n\nCustomers who are not at their arranged accommodation at the time of collection may be recorded as no-shows and may not be accommodated on the rebooked service.\n\nThis is for your safety.\n\nWe are doing our best.', 3);
+    X('AB0271: Customers not at their accommodation may be recorded as NO-SHOW. Reply STOP to opt out.');
+    X('STOP is not a recognised command.');
+    E('A message from your purser', 'Dear Customer,\n\nI am in charge of this cabin, and the safety of our customers is tantamount.\n\nYou have made alternative arrangements. These have been noted.\n\nWe will collect you at 04:30.\n\nWe are doing our best.', 4);
+    ['AB0271: Please be ready.', 'AB0271: 04:30.', 'AB0271: Your transfer is on time.', 'AB0271: Please proceed to the door at the arranged time.', 'AB0271: We are doing our best.', 'AB0271: Do not reply.', 'AB0271: Please be ready.', 'AB0271: 04:30.'].forEach((t) => X(t));
+    A('Nearly there. 🙂');
+    A('Please proceed to the door at 04:30. Do not open it before. Do not open it after.', 2);
+    E('Final notice', 'Dear Customer,\n\nThis is a final notice.\n\nWe are doing our best.', 3);
+    X('AB0271: Final notice.');
+    msgs.push({ ch: 'email', from: 'Albion Atlantic Customer Care', subj: 'Your car is waiting', body: 'Dear Customer,\n\nA car has been arranged to return you to your accommodation at Hótel Hraun.\n\nYour driver is waiting outside Hótel Lind. Please look for the Albion Atlantic crest.\n\nEstimated journey time: —:—', dd: 3, actions: [{ label: 'Go down to the car', if: (G) => G.has('lind') && !G.has('morning'), next: 'lind_car' }] });
+    A('We know which room you are in. 🙂', 2);
+    // stamped across the dark hours, from the moment the phone died to now, so they all land at once
+    const t0 = G.S.deadAt != null ? G.S.deadAt : T(1, 2, 50), t1 = Math.max(t0 + msgs.length, G.t - 4);
+    msgs.forEach((m, k) => { const at = Math.floor(t0 + (t1 - t0) * (k + 1) / msgs.length); if (m.ch === 'chat') m.at = at; else m.stamp = at; G.S.backlog.push(m); });
+  }
+
+  scenes.lind_arrive = {
+    art: 'guesthouse',
+    loc: 'Hótel Lind · off Laugavegur · Reception',
+    enter: (G) => { G.S.t = Math.max(G.t, T(1, 3, 5)); G.flag('at_hotel'); G.flag('lind'); atLeast(G, 34); },
+    text: (G) => p(
+      G.last(),
+      'A guesthouse, then. Narrow, warm, a reception the size of a cupboard, and a woman behind it who is awake, and has a paperback, and looks at you the way people look at the weather. She speaks the way the airline does not: in whole sentences, with no logo on them.',
+      V(LX('“Gunnar\'s headlights. Then you are from the flight.”')) + ' The airline has never booked with her. Gunnar has brought her one of you every night this week. It is, somehow, the best news of the night. She has a room, 7, up two flights, cash or card. The card works on the first try.',
+      'No, there is no printed sign. No, nobody has phoned. ' + V(LX('“Do you need anything? Toothpaste. A charger — everybody leaves chargers. There is bread in the kitchen, and skyr. Ask. I am here all night.”')),
+    ),
+    choices: [
+      { label: 'Yes. Toothpaste, please. And a charger, if one fits. And whatever is in the kitchen.', nd: -3, dd: 1, time: 8, do: (G) => { G.flag('lind_tp'); G.flag('charger'); G.flag('lind_food'); G.S.once.lind_desk_tp = true; G.S.once.lind_desk_ch = true; G.S.once.lind_desk_food = true; G.nerves(-4); G.dread(2); G.note('A half-used tube from a man from Düsseldorf, a toothbrush still in its wrapper, a tray of bread and skyr, and the drawer: dozens of cables, every kind, held up to your phone one by one like a dentist. The fourth fits. ' + V(LX('“Keep it. Everybody leaves them.”')) + ' You go up with your arms full, like someone who has been shopping.'); }, next: 'lind_room' },
+      { label: 'Just the room, for now.', time: 6, do: (G) => G.note('You tell her you will think about it. You have no idea why you said that. She nods as if she has heard it before, and goes back to the paperback, and says, without looking up, that she is here all night.'), next: 'lind_room' },
+    ],
+  };
+
+  scenes.lind_room = {
+    art: 'street',
+    loc: 'Hótel Lind · Room 7',
+    enter: (G) => {
+      G.flag('loc_lind_room');
+      if (G.t >= KNOCK_AT && !G.has('knocked')) { G.go('lind_knock'); return; }
+      if (G.t >= T(1, 6, 0)) { G.flag('allnighter'); G.go('lind_sleep'); return; }
+      if (G.once('lind_room_intro')) G.note(p(G.last(), 'A single bed under a slanted ceiling, a radiator, a kettle, a window onto a street. A street, with a lamp in it and a parked car and, as you watch, a person walking home. You stand at the window for longer than you meant to. It is the first window all night with anything behind it.'));
+    },
+    text: (G) => p(lindStatus(G) + (!G.has('charger') && !G.has('lind_tp') ? ' Reception is two flights down. She said to ask.' : ''), G.last(), G.amb('lind_room', LIND_AMB.room)),
+    choices: (G) => [
+      { label: 'Plug the phone in.', if: (G) => G.has('charger') && G.dead(), time: 3, next: 'lind_charge' },
+      { label: 'Brush your teeth. Actually brush them.', if: (G) => G.has('lind_tp') && !G.did('brush'), once: 'brush', time: 4, do: (G) => { G.nerves(-4); G.dread(-1); G.note('Toothpaste that belonged to a stranger from Düsseldorf. You brush for two full minutes and look at yourself in the mirror while you do it, and for two minutes you are a person who is going somewhere tomorrow.'); }, next: 'lind_room' },
+      { label: 'Eat the bread and skyr she left on the tray.', if: (G) => G.has('lind_food') && !G.has('lind_ate'), time: 8, do: (G) => { G.flag('lind_ate'); G.nerves(-8); G.note('Bread, butter, a tub of skyr with a date on it you can live with. You eat on the edge of the bed with the tray on your knees. It is the second-best meal you have had in twenty hours, and the only one.'); }, next: 'lind_room' },
+      { label: 'Shower. Put the same clothes back on.', whyNot: 'You could not stand still under it.', nerveMax: 95, time: 20, once: 'lind_shower', do: (G) => { G.nerves(-6); G.dread(-3); G.note('Hot water that smells faintly of eggs and does not run out. You stand in it until you are a person, and then you put the plane back on.'); }, next: 'lind_room' },
+      { label: 'Make tea with the kettle.', whyNot: 'Your hands would spill it.', nerveMax: 90, time: 8, once: 'lind_tea', do: (G) => { G.nerves(-5); G.dread(-2); G.note('Tea, with real milk from a jug in the shared fridge, which somebody has labelled with a name and a smiley face. You hold it in both hands. It is the first warm thing that has not been a lie.'); }, next: 'lind_room' },
+      { label: 'Look out of the window, at the street.', whyNot: 'You know what is out there now.', dd: 2, dreadMax: 85, time: 3, do: (G) => { const d = G.D, n = G.count('lwin'); G.dread(2); G.nerves(d >= 4 ? 6 : 1); if (d >= 4) G.flag('looked_lind'); G.note(d >= 5 ? 'The coach is in the street now, filling it, its mirrors a hand from the walls on either side. Interior lights on. Everyone inside facing the guesthouse, upright, still. And by the door, hands folded, a man in navy, looking up at one window. You let the curtain go.' : d >= 4 ? 'Under the lamp opposite, a man in a navy uniform, very straight, hands folded. He is not looking at the guesthouse. He is looking at the window two along from yours. Then one along.' : n === 1 ? 'A street. A lamp. A cat on a wall, doing nothing, magnificently. You could cry about the cat.' : 'The street. The lamp. A car goes past slowly with a light on its roof and does not stop. It is quieter than it was.'); }, next: 'lind_room' },
+      { label: 'Listen to the building.', whyNot: 'You do not want to know.', nd: 3, dreadMax: 90, time: 4, do: (G) => { const d = G.D; G.dread(2); G.nerves(2); G.note(G.pick(d >= 4 ? ['Footsteps on the stairs. Even. Patient. Stopping on the landing below yours, and staying there.', 'The front door, two floors down, which she locked at midnight, opening.', 'Knocking. Not here. The next building. Then this one, downstairs. Then nearer.'] : ['Snoring through one wall. A tap through another. A building full of people who are going somewhere tomorrow.', 'The kettle in the kitchen, two floors down, and somebody humming at it.', 'Nothing. A radiator. A city, asleep, which is a sound.'])); }, next: 'lind_room' },
+      { label: 'Try to sleep.', whyNot: 'You cannot lie still.', nerveMax: 80, time: 25, do: (G) => { if (G.t + 25 >= T(1, 4, 5)) { G.S.t = Math.max(G.t, KNOCK_AT - 25); G.nerves(-2); G.dread(-1); G.note('You lie down in the plane clothes with the light on. The ceiling slopes toward you. You are almost, almost—'); } else { G.nerves(-4); G.dread(-3); G.note(G.pick(['You lie down. A proper bed, a proper quiet. Your body does not believe any of it and lies there, braced.', 'Eyes closed. A car below, slowing, not stopping. You sit back up.', 'You get under the duvet in your clothes. Somewhere a kettle. Sleep looks at you from the street and does not come in.'])); } }, next: 'lind_room' },
+      { label: (!G.has('charger') || !G.has('lind_tp') || !G.has('lind_food')) ? 'Go down to reception. Ask for things.' : 'Go down to reception.', time: 2, next: 'lind_lobby' },
+    ],
+  };
+
+  scenes.lind_lobby = {
+    art: 'guesthouse',
+    loc: 'Hótel Lind · Reception',
+    enter: (G) => {
+      G.flag('loc_lind_lobby');
+      if (G.t >= KNOCK_AT && !G.has('knocked')) { G.go('lind_lobby_knock'); return; }
+      if (G.t >= T(1, 6, 0)) { G.flag('allnighter'); G.go('lind_sleep'); return; }
+      if (G.once('lind_lobby_intro')) G.note(p(G.last(), 'The clerk, the paperback, a kitchen through a door with the light on, a drawer she opens without being asked. It is full of cables. Dozens. Every kind. Left by every guest who ever stayed here and went home.'));
+    },
+    text: (G) => p(`Reception. ${G.clock(G.t)}. The clerk is still awake. The front door is locked.`, G.last(), G.amb('lind_lobby', LIND_AMB.lobby)),
+    choices: (G) => [
+      { label: 'Ask whether she speaks French.', if: (G) => G.S.lang === 'fr' && !G.has('fr_asked'), time: 4, do: (G) => { G.flag('fr_asked'); G.nerves(-2); G.note(LX('“A little. Toothpaste, charger, kitchen. Sleep.”') + ' She said it slowly, counting them off on the paperback.'); }, next: 'lind_lobby' },
+      { label: 'Ask for toothpaste.', time: 4, once: 'lind_desk_tp', do: (G) => { G.flag('lind_tp'); G.nerves(-3); G.note('She reaches under the desk and comes up with a tube, half used, from a guest who left in a hurry. ' + V(LX('“Düsseldorf,”')) + ' she says, by way of provenance. There is a toothbrush, too, still in its wrapper.'); }, next: 'lind_lobby' },
+      { label: 'Ask for a charger.', time: 4, once: 'lind_desk_ch', do: (G) => { G.flag('charger'); G.nerves(-2); G.dread(2); G.note('The drawer. She rummages, holding cables up to your phone like a dentist. The fourth one fits. ' + V(LX('“Keep it. Everybody leaves them.”')) + ' You hold it for a moment before you put it in your pocket, as if it were a decision.'); }, next: 'lind_lobby' },
+      { label: 'Ask if there is anything to eat.', time: 5, once: 'lind_desk_food', do: (G) => { G.flag('lind_food'); G.nerves(-2); G.note('She goes into the kitchen and comes back with a tray: bread, butter, a tub of skyr. ' + V(LX('“Take it up. Breakfast is at seven. Proper breakfast.”')) + ' Nobody has said the word proper to you in a day.'); }, next: 'lind_lobby' },
+      { label: 'Ask how to get back to the airport.', dd: -3, time: 6, once: 'lind_desk_bus', do: (G) => { G.flag('know_flybus'); G.nerves(-3); G.msg('paper', { from: 'Reception, Hótel Lind', subj: 'Flybus card', body: '<b>FLYBUS → KEF AIRPORT</b>\n\nFrom BSÍ terminal (10 min walk)\n\n06:00 · 07:00 · 08:00 · 09:00 · 10:00 · every hour\n\n<b>TICKET REQUIRED</b> — buy at the kiosk or online\n\n45 minutes.' }); G.note('She does not point at Iceland. She writes it on a card: ' + V(LX('“Flybus. From BSÍ, where you came from. Ten minutes. Every hour from six. Buy the ticket first; the driver will not take you without.”')) + ' She looks at you. ' + V(LX('“Not the other one. The yellow one.”')) + ' You did not ask about another one.'); }, next: 'lind_lobby' },
+      { label: 'Ask whether anyone has asked for you.', kind: 'comply', dd: 3, time: 4, do: (G) => { const n = G.count('lind_asked'); G.dread(1); G.note(G.t >= KNOCK_AT ? V(LX('“A man in a uniform. I told him we had nobody of that name. He said he would wait.”')) + ' She looks at the door. ' + V(LX('“I locked it.”')) : n === 1 ? V(LX('“Nobody. Nobody knows you are here.”')) + ' She says it as a comfort, and it is one, for about a second.' : V(LX('“Still nobody,”')) + ' she says, before you have finished, and does not look up, and then does.'); }, next: 'lind_lobby' },
+      { label: 'Sit in the kitchen with whoever is awake.', whyNot: 'You would snap at a stranger.', nd: -4, dd: -2, nerveMax: 85, time: 10, once: 'lind_kitchen', do: (G) => { G.nerves(-3); G.dread(G.D >= 3 ? 3 : -1); G.note(G.D >= 3 ? 'A man in a clean shirt, eating toast at two in the morning as if it were a reasonable hour. ' + V('“Albion?”') + ' he says, brightly. ' + V('“Tuesday\'s. We\'re waiting for the transfer. It\'s confirmed.”') + ' He shows you his phone. ' + ALLY(G) + ' has confirmed it. It confirms it every morning.' : 'Two backpackers, planning a glacier. They give you a biscuit and ask about the flight and say ' + V('“that\'s insane”') + ' at every correct moment. You feel, for ten minutes, like a story someone else is telling.'); }, next: 'lind_lobby' },
+      { label: 'Ask her to call Gunnar. Go to the other hotel after all. The right one.', kind: 'comply', dd: 4, sub: 'Forty minutes. The fare again.', if: (G) => G.t < T(1, 5, 30), time: 6, do: (G) => G.note(V(LX('“Hraun? You are sure?”')) + ' She rings him anyway, and says your room number into the phone as if it were a password, and goes back to the paperback, and does not look at you again until the headlights.'), next: 'lind_taxi_back' },
+      { label: 'Ask her to unlock the door. Step out for some air.', whyNot: 'The street is the wrong way.', dreadMax: 85, dd: -2, time: 3, do: (G) => G.note('She unlocks it without a word and locks it again behind you, and stands at the glass with the paperback, watching, the way you would watch a child in a garden.'), next: 'lind_street' },
+      { label: 'Back up to room 7.', time: 2, next: 'lind_room' },
+    ],
+  };
+
+  /* ---- the street outside Lind (hub) ---- */
+  scenes.lind_street = {
+    art: 'street',
+    loc: 'Laugavegur · outside Hótel Lind',
+    enter: (G) => {
+      G.dread(1);
+      if (G.t >= KNOCK_AT && !G.has('knocked')) { G.go('lind_lobby_knock'); return; }
+      if (G.t >= T(1, 6, 0)) { G.flag('allnighter'); G.go('lind_sleep'); return; }
+      if (G.once('lind_street_intro')) G.note(p(G.last(), 'A street. Cold, but a city cold, with walls in it. Closed bars, a bakery with its lights off and its smell still on, a lamp, parked cars with frost on them. Nobody. Then, at the far end, somebody, walking the other way, in no hurry, which seems like an obscene amount of luck.'));
+    },
+    text: (G) => p(`The street. ${G.clock(G.t)}. The door behind you is locked, and she is behind it.` + (G.has('lind_car') ? ' At the kerb, engine running, a black car with a small gold crest on the door, the one from the email.' : ''), G.last(), G.amb('lind_street', LIND_AMB.street)),
+    choices: (G) => [
+      { label: 'Walk to the corner. Look down the hill.', whyNot: 'Your feet will not.', nd: 3, dreadMax: 90, time: 6, do: (G) => { const d = G.D; G.dread(d >= 4 ? 3 : 1); G.nerves(d >= 4 ? 5 : 2); if (d >= 4) G.flag('coach_seen_street'); G.note(d >= 5 ? 'Down the hill, where the street widens for the harbour, a coach is parked across the end of it, navy, gold crest, every interior light on. There is no way past it that is not through it. A man at its door, hands folded, is looking up the hill, at you, as if you were late.' : d >= 4 ? 'Down the hill, where the street widens, something long and dark with its engine running, and a strip of warm light along its side that is windows. It is too big for the street. It is in the street anyway.' : 'Down the hill the street opens toward the harbour, and the harbour is a darker dark with lights on the far side. A taxi crosses the bottom of the hill with its sign lit, going somewhere else.'); }, next: 'lind_street' },
+      { label: 'Walk down to it.', kind: 'comply', if: (G) => G.has('coach_seen_street'), do: (G) => { G.flag('nc_lind'); G.end('nightcoach'); } },
+      { label: 'The car at the kerb. Get in.', kind: 'comply', if: (G) => G.has('lind_car'), sub: 'It has your name on a tablet.', do: (G) => G.end('accommodated') },
+      { label: 'Look up at your window.', time: 3, do: (G) => { G.dread(1); G.nerves(1); G.note(G.D >= 4 ? 'Second floor, the small one under the slant of the roof. The light is on. You left it on. The curtain is open. You did not leave it open.' : 'Second floor, the small one under the slant of the roof. The light is on. From down here it looks like a room somebody is safe in.'); }, next: 'lind_street' },
+      { label: 'Stand under the lamp and breathe.', nd: -3, dd: 1, time: 5, once: 'lind_breathe', do: (G) => { G.nerves(-4); G.dread(1); G.note('Cold air, properly cold, and a sky with one star in it that is probably a plane. For a minute you are a person standing in a street in a city, and nothing is expecting you anywhere.'); }, next: 'lind_street' },
+      { label: 'Knock on the glass. Go back in.', time: 2, next: 'lind_lobby' },
+    ],
+  };
+
+  scenes.lind_charge = {
+    art: 'phone',
+    loc: (G) => `Hótel Lind · Room 7 · ${G.clock(G.t)}`,
+    enter: (G) => { G.flag('charged'); G.flag('lind_car'); if (G.once('flood')) lindFlood(G); G.S.floodN = G.charge(100); },
+    text: (G) => p(
+      'The cable. The socket by the bed. The small lightning bolt, and the screen coming up grey, and the clock, which has been going on without you.',
+      'Then it starts. A buzz, and a buzz, and a buzz, and the screen filling from the top down with everything they sent while you were dark: mail, text, chat, mail, mail, text, a number climbing in a red circle like a fever. It does not stop. You put it on the bed and it moves across the duvet, buzzing, a few millimetres at a time, toward you.',
+      `${G.S.floodN || 0} notifications. The last one is from four minutes ago. It says they know which room you are in.`,
+    ),
+    choices: [
+      { label: 'Read them. All of them.', kind: 'comply', dd: 2, time: 10, do: (G) => { G.openPhone('email'); G.note('You read them. All of them.'); }, next: 'lind_room' },
+      { label: 'Put it face down. Let it charge. Do not read them.', whyNot: 'You cannot not look.', dreadMax: 80, nd: 4, time: 5, do: (G) => { G.note('You put it face down on the floor by the socket, where it goes on buzzing, muffled, like something under a pillow.'); }, next: 'lind_room' },
+      { label: 'Pull the cable out. Leave it dead.', whyNot: 'It has your name in it now.', dreadMax: 70, dd: -4, time: 2, do: (G) => { G.S.phoneDead = true; G.S.batt = 0; G.flag('unplugged'); G.nerves(5); G.note('You pull the cable out. The screen holds for a second, with its red number on it, and goes. The silence afterwards is the best thing in the room, and you do not trust it.'); }, next: 'lind_room' },
+    ],
+  };
+
+  scenes.lind_car = {
+    art: 'street',
+    loc: 'Laugavegur · outside Hótel Lind',
+    text: (G) => p(
+      'The clerk unlocks the door for you without a word. At the kerb, where there was nothing, there is a car: black, long, immaculate, a small gold crest on the door, engine running, exhaust standing in the cold like breath. The driver holds a tablet with your name on it — spelled right.',
+      V('“For Hótel Hraun?”'),
+      'He opens the rear door. Warm air. Leather. Behind you, through the glass, the clerk is standing with the paperback against her chest, and she is shaking her head, slowly, once.',
+    ),
+    choices: [
+      { label: 'Get in. It is, after all, the right hotel.', kind: 'comply', sub: 'Warm.', do: (G) => G.end('accommodated') },
+      { label: 'No. No, thank you.', whyNot: 'He has your name.', dd: 5, dreadMax: 85, time: 4, do: (G) => { G.nerves(5); G.dread(8); G.note('The driver did not seem surprised. He closed the door, and stayed where he was, and was still there when the clerk locked the door behind you and turned the key twice.'); }, next: 'lind_lobby' },
+    ],
+  };
+
+  scenes.lind_taxi_back = {
+    art: 'road',
+    loc: 'Gunnar\'s taxi · Route 41 · outbound',
+    enter: (G) => { G.flag('left_lind'); G.flag('lind', false); G.S.t = Math.max(G.t + 40, T(1, 4, 10)); G.dread(6); G.nerves(4); },
+    text: (G) => p(
+      'Gunnar, again, with the radio on low. He does not ask why. ' + V(LX('“Hraun. Yes. Everyone goes in the end.”')) + ' He does not sound as if he approves. He does not sound as if he would refuse, either.',
+      'The city ends. Lava, under a low sky, a road with one white line that keeps disappearing. Twice, headlights come up behind and stay there, exactly far enough back, and then they are gone, and that is worse.',
+      'At the low, wide hotel lit like an aquarium, he takes the fare on the card and says ' + V(LX('“Good luck,”')) + ' and waits, with his lights on, until you are inside.',
+    ),
+    choices: [{ label: 'Go in.', time: 3, next: 'hotel_arrive' }],
+  };
+
+  scenes.lind_knock = {
+    art: 'street',
+    loc: (G) => `Hótel Lind · Room 7 · ${G.clock(G.t)}`,
+    enter: (G) => { G.flag('knocked'); atLeast(G, 62); },
+    text: (G) => p(
+      G.last(),
+      'Someone is knocking. Two flights up a locked building, on the door of a room nobody booked you into. Evenly, the way a person knocks who will knock all night.',
+      V('“Transfer to your accommodation. Albion Atlantic. Departing now.”'),
+      'The voice is patient. The voice knows the room number. The voice says it, in case you had forgotten: ' + V('“Seven.”'),
+    ),
+    choices: [
+      { label: 'Open the door.', kind: 'comply', sub: 'It is, after all, your transfer.', do: (G) => { G.flag('nc_lind'); G.end('nightcoach'); } },
+      { label: 'Don\'t. She said nobody asked. She locked the door.', whyNot: 'You cannot not answer.', nd: 5, dreadMax: 80, time: 20, do: (G) => { G.nerves(5); G.note('You sat on the bed with your back to the wall and counted. You lost count at fifty. When it stopped, there was no sound of anyone going down the stairs.'); }, next: 'lind_window' },
+      { label: 'Look through the spyhole.', dd: 6, nd: 6, time: 2, do: (G) => { G.nerves(9); G.flag('spyhole'); G.note('The landing is empty. The boards outside your door are dark, as if wet, in a building with wooden floors. The knocking continues, evenly, from nowhere in particular.'); }, next: 'lind_knock2' },
+      { label: 'Pick up the room phone. Ask her who she let in.', whyNot: 'Your hand would not hold it.', nd: 4, nerveMax: 85, time: 4, do: (G) => { G.nerves(4); G.dread(4); G.note('It rings once. ' + V(LX('“Seven? Yes. Nobody. I locked the door at midnight, I have been sitting here, nobody has come in.”')) + ' A pause, in which you can both hear the knocking, through the phone and through the door. ' + V(LX('“Don\'t open it. I am coming up.”')) + ' You hear her on the stairs. The knocking does not stop for her. Then it does, and she is outside your door, alone, saying your room number softly, and there is nobody else on the landing at all.'); }, next: 'lind_window' },
+    ],
+  };
+
+  scenes.lind_knock2 = {
+    art: 'street',
+    loc: (G) => `Hótel Lind · Room 7 · ${G.clock(G.t)}`,
+    text: (G) => p(G.last(), 'Even. Patient. Nobody there.'),
+    choices: [
+      { label: 'Open the door anyway.', kind: 'comply', do: (G) => { G.flag('nc_lind'); G.end('nightcoach'); } },
+      { label: 'Back away from the door. Sit on the bed. Wait it out.', whyNot: 'Your hand is already on the latch.', dreadMax: 88, time: 25, do: (G) => { G.nerves(3); G.note('It stopped, eventually, the way rain stops: you did not notice the last one. There was no sound of anyone going down the stairs.'); }, next: 'lind_window' },
+    ],
+  };
+
+  scenes.lind_lobby_knock = {
+    art: 'guesthouse',
+    loc: (G) => `Hótel Lind · Reception · ${G.clock(G.t)}`,
+    enter: (G) => { G.flag('knocked'); atLeast(G, 62); G.nerves(6); },
+    text: (G) => p(
+      G.last(),
+      'You are at reception when it starts. Upstairs. Two flights up. Knocking, even and patient, on a door, and the clerk looks up at the ceiling, and then at the front door, which is locked, and then at you.',
+      V(LX('“That is seven,”')) + ' she says. ' + V(LX('“Nobody came in.”')),
+      'From the top of the stairs, carried down the stairwell, pleasantly: ' + V('“Transfer to your accommodation. Departing now.”'),
+    ),
+    choices: [
+      { label: 'Go up. You are an Albion Atlantic passenger.', kind: 'comply', do: (G) => { G.flag('nc_lind'); G.end('nightcoach'); } },
+      { label: 'Stay down here. With her. With the light on.', whyNot: 'You cannot move.', dd: 5, dreadMax: 92, time: 20, do: (G) => { G.nerves(4); G.dread(5); G.flag('hid_lobby'); G.note('You sat on the stairs with your back to the wall and she sat behind the desk, and neither of you said anything, and after a while the knocking stopped, and nobody came down.'); }, next: 'lind_window' },
+    ],
+  };
+
+  scenes.lind_window = {
+    art: 'street',
+    loc: (G) => `Hótel Lind · Room 7 · ${G.clock(G.t)}`,
+    enter: (G) => { G.S.t = Math.max(G.t, T(1, 4, 50)); if (!G.dead()) G.bot('Hi! I see you\'re in room 7. Your transfer is waiting in the street. Please do not look out of the window. 🙂', 2); },
+    text: (G) => p(
+      G.last(),
+      G.has('hid_lobby') ? 'You went back up, eventually. The landing was empty. The knocking has stopped.' : 'The knocking has stopped.',
+      G.dead() ? 'The phone is dark on the floor by the socket, and that is almost worse: whatever they are saying, they are saying it to nobody.' : 'Your phone lights the slanted ceiling. A message from Ally. ' + W('Your transfer is waiting in the street. Please do not look out of the window.'),
+      'The curtain is a thin one. There is light coming through it from below, and the light is moving slightly, the way light from a running engine does, in a street too narrow for the thing that is running it.',
+    ),
+    choices: [
+      { label: 'Look.', whyNot: 'They said not to.', dd: 10, nd: 8, dreadMax: 90, sub: 'Just a little.', time: 5, do: (G) => { G.flag('seen'); G.flag('seen_lind'); G.flag('looked_out'); G.nerves(14); atLeast(G, 78); G.note('A coach, navy, with a gold crest, filling the street from wall to wall. Engine running. Every interior light on. Everyone inside sitting upright, facing the guesthouse. At the door, a man in a purser\'s uniform, looking up — not at the building. At your window. He does not wave. He has noted it.'); }, next: 'lind_sleep' },
+      { label: 'Don\'t. Pull the duvet over your head.', kind: 'comply', dd: 6, time: 5, do: (G) => G.nerves(2), next: 'lind_sleep' },
+    ],
+  };
+
+  scenes.lind_sleep = {
+    art: 'guesthouse',
+    loc: 'Hótel Lind · Breakfast room',
+    enter: (G) => {
+      G.S.t = T(1, 7, 30); G.flag('morning');
+      G.S.dread = Math.max(20, G.S.dread - 25);
+      G.nerves(G.has('allnighter') ? 6 : -10);
+      if (G.has('lind_tp')) G.nerves(-4);
+      if (G.dead()) { G.flag('lind_morning_cable'); if (G.once('flood')) lindFlood(G); G.charge(100); }
+      G.at(T(1, 7, 35), 'sms', { from: 'Jo 💛', body: 'OMG YOU\'RE IN ICELAND?? you have to do the blue lagoon. HAVE TO. it\'s like 20 min from the airport' });
+      G.at(T(1, 8, 5), 'chat', { body: 'Good morning! Your transfer from Hótel Lind to the airport is confirmed for 09:00. Please wait in the lobby. 🚌', dd: 1 });
+      G.at(T(1, 9, 40), 'email', { from: 'Albion Atlantic Customer Care', subj: 'Your transfer to the airport', stamp: T(1, 9, 40), body: 'Dear Customer,\n\nCoaches will collect you from your accommodation at 09:00 for your rebooked flight AB 0271.\n\nPlease be ready in the lobby at 08:45.\n\nWe are doing our best.', dd: 2 });
+      G.at(T(1, 9, 55), 'chat', { body: 'Your transfer is here. It\'s the nice one. 🚌', dd: 1 });
+    },
+    text: (G) => p(
+      G.has('allnighter') ? 'Grey light. 07:30. You did not sleep, and you are still in Iceland, in a guesthouse the airline never booked.' : 'Grey light. 07:30. You slept, or something like it, in a bed nobody arranged, and you are still in Iceland.',
+      'Breakfast is bread, skyr, eggs, and coffee that somebody meant. Two backpackers are planning a glacier. And at the long table by the window, a party of eight in clean shirts and clean socks, looking at their phones, nodding at them.',
+      V('“Albion?”') + ' says one of them, cheerfully, when he sees your clothes. ' + V('“Tuesday\'s. And Thursday\'s, those two. We\'re waiting for the transfer. It\'s confirmed.”') + ' He turns his phone round. ' + ALLY(G) + ' has confirmed it. It has confirmed it every morning. Nobody at the table has looked at the departures board.',
+      G.has('lind_morning_cable') && 'The clerk, without being asked, puts a cable on the table by your plate. The phone comes back, and the first thing it does is tell you everything you missed.',
+    ),
+    choices: [{ label: 'Get a coffee anyway.', time: 10, next: 'lind_morning' }],
+  };
+
+  scenes.lind_morning = {
+    art: 'guesthouse',
+    loc: 'Hótel Lind · Breakfast room',
+    enter: (G) => {
+      if (G.t >= T(1, 10, 15) && !G.has('lind_decoy')) { G.go('lind_decoy'); return; }
+      if (G.once('lind_morn_intro')) G.note(p(G.last(), 'The Albion table has a rhythm: phone, nod, coffee, phone. Nobody has a bag. Nobody has a plan beyond the transfer. The clerk refills the skyr the way you would feed something you had decided to keep.'));
+    },
+    text: (G) => p(
+      `The breakfast room. ${G.clock(G.t)}. ${G.t >= T(1, 9, 45) ? 'The email said 09:00 and arrived at 09:40. ' : G.t >= T(1, 8, 5) ? 'The chatbot said 09:00, from a hotel it never booked. ' : ''}${G.has('know_flybus') ? 'The card says the Flybus is every hour from BSÍ.' : 'Nobody here has mentioned a bus.'}`,
+      G.last(), G.amb('lind_morning', LIND_AMB.morning)),
+    choices: (G) => [
+      { label: 'Ask reception how to get back to the airport.', dd: -3, time: 6, if: (G) => !G.has('know_flybus'), do: (G) => { G.flag('know_flybus'); G.nerves(-3); G.msg('paper', { from: 'Reception, Hótel Lind', subj: 'Flybus card', body: '<b>FLYBUS → KEF AIRPORT</b>\n\nFrom BSÍ terminal (10 min walk)\n\n06:00 · 07:00 · 08:00 · 09:00 · 10:00 · every hour\n\n<b>TICKET REQUIRED</b> — buy at the kiosk or online\n\n45 minutes.' }); G.note('She writes it on a card. ' + V(LX('“Flybus. From BSÍ, where you came from. Ten minutes. Every hour. Buy the ticket first.”')) + ' She glances at the long table. ' + V(LX('“The yellow one. Not the other one.”'))); }, next: 'lind_morning' },
+      { label: 'Talk to Tuesday\'s passengers.', whyNot: 'You would start an argument.', nd: -3, dd: 2, nerveMax: 85, time: 12, once: 'lind_tuesday', do: (G) => { G.nerves(-2); G.dread(3); G.note('They are lovely. They are rested. They have been rested since Tuesday. ' + V('“It\'s confirmed for nine,”') + ' says a woman with a very clean collar. ' + V('“It was confirmed for nine yesterday. The airline\'s doing its best.”') + ' You ask whether anyone has thought of just taking the Flybus. They look at you the way people look at someone who has suggested walking to America.'); }, next: 'lind_morning' },
+      { label: 'Go back up. Shower. Wash your face, at least.', whyNot: 'You could not stand still under it.', nerveMax: 92, time: 25, once: 'lind_morn_shower', do: (G) => { G.nerves(-5); G.dread(-2); G.note('Hot water. The same clothes. The room in daylight is a nice room in a nice guesthouse, and the street outside is a street, with a bakery in it, and nothing parked that should not be.'); }, next: 'lind_morning' },
+      { label: 'Check the flight status on the airline site.', dd: 3, nd: 3, time: 8, if: (G) => !G.dead(), do: (G) => { const n = G.count('status'); G.dread(2); G.batt(-1); G.note(n === 1 ? 'AB 0271 · KEF → LAX · 15:10 · ON TIME. Under it, in smaller letters: YOUR TRANSFER IS CONFIRMED.' : 'AB 0271 · 15:10 · ON TIME. The page knows which hotel you are in. It did not yesterday.'); }, next: 'lind_morning' },
+      { label: 'Go to the hot springs. You have always wanted to.', sub: 'It is twenty minutes from the airport. Everyone says so.', do: (G) => G.end('tantalus') },
+      { label: 'Wait in the lobby for the transfer. It is confirmed.', kind: 'comply', dd: 5, nd: 2, sub: 'Half an hour of it.', time: 30, do: (G) => { G.nerves(2); G.dread(3); G.note(G.pick(['Half an hour. The Albion table does not move. One of them gets a coffee and comes back to the same chair, as if it were assigned.', 'Half an hour. Outside, a yellow bus goes past the end of the street, and nobody at the long table turns their head.', 'Half an hour. Every phone at the long table says, at once, that the transfer is on its way, and the whole table smiles at once.'])); }, next: 'lind_morning' },
+      { label: 'Walk to BSÍ. Ten minutes. Buy a ticket for the yellow one.', if: (G) => G.has('know_flybus'), dd: -2, time: 12, next: 'lind_buses' },
+      { label: 'Walk back to the bus terminal and see what is there.', if: (G) => !G.has('know_flybus'), time: 12, next: 'lind_buses' },
+    ],
+  };
+
+  scenes.lind_decoy = {
+    art: 'street',
+    loc: 'Hótel Lind · the street outside',
+    enter: (G) => { G.flag('lind_decoy'); G.dread(4); },
+    text: (G) => p(
+      'Somebody at the long table says, ' + V('“It\'s here.”') + ' Eight people stand up at once, like a congregation.',
+      'Outside: a coach, navy, gold crest, filling the street from wall to wall, its LED saying TRANSFER · ALBION ATLANTIC · CONFIRMED. The purser stands at the door with his hands folded, and when he sees you he smiles as if you were exactly on time, which, for the first time in two days, you are.',
+      'Tuesday\'s passengers file past you and up the steps, and sit, and face the guesthouse, and are still. The clerk stands in the doorway with the paperback against her chest. She does not wave.',
+    ),
+    choices: [
+      { label: 'Board. It is confirmed. Everyone says so.', kind: 'comply', do: (G) => G.end('arrangements') },
+      { label: 'Walk the other way. Toward BSÍ. Do not look back at it.', whyNot: 'He is looking at you.', dreadMax: 85, time: 12, do: (G) => { G.nerves(8); G.dread(4); G.note('You walked. Nobody stopped you. Behind you the coach stayed where it was with its door open for a long time, and then the street was just a street, and you were on it, alone, with a direction.'); }, next: 'lind_buses' },
+    ],
+  };
+
+  scenes.lind_buses = {
+    art: 'bsi',
+    loc: 'Reykjavík · BSÍ bus terminal · morning',
+    enter: (G) => { G.flag('left_hotel'); G.dread(2); if (G.t < T(1, 8, 0)) G.S.t = T(1, 8, 0); },
+    text: (G) => p(
+      'BSÍ in daylight is a bus terminal: a kiosk selling tickets and cinnamon, a board that works, backpackers who know where they are going. You could be one of them. You are wearing the plane.',
+      G.has('know_flybus') ? 'The kiosk sells you a ticket on the first try. The card is getting used to this.' : 'You do not have a ticket. You are not sure which of these needs one.',
+      'Outside: buses. Nothing on any of them says your flight number, except the one that does, in gold.',
+      G.has('know_flybus') && W(LX('“The yellow one. Not the other one.”')),
+    ),
+    buses: (G) => {
+      const flybus = {
+        key: 'city',
+        art: { livery: '#cfae36', windows: 'dim', passengers: 'luggage', sign: 'print', driver: 'plain', ground: 'day' },
+        name: 'A yellow bus in city livery',
+        sign: 'FLYBUS · KEF AIRPORT', signStyle: 'print',
+        look: ['Driver, bored, scanning tickets off phones.', 'Passengers with rucksacks and wheeled bags, and one with none at all, in yesterday\'s shirt, who nods at you.'],
+        hidden: ['A sticker by the door: TICKET REQUIRED. The driver means it.', 'Nobody on board is waiting for anything. They are going to the airport, which is the whole idea.'],
+        boardLabel: G.has('know_flybus') ? 'Board' : 'Board without a ticket',
+        board: { time: 10, do: (G) => { G.flag('bus2_ok'); if (!G.has('know_flybus')) { G.nerves(6); G.S.t += 20; G.note('The driver points at the kiosk without looking up. You buy a ticket. You run. He waits, barely.'); } }, next: 'ride3' },
+      };
+      const crest = {
+        key: 'crest',
+        art: { livery: '#1b2a4a', stripe: '#c9a227', windows: 'warm', passengers: 'upright', sign: 'led', driver: 'purser', ground: 'day' },
+        name: 'A navy coach with a gold crest, in the far bay, as if it had never left',
+        sign: 'AIRPORT TRANSFER · ALBION ATLANTIC', signStyle: 'led',
+        look: ['The purser at the door. He knows which window was yours.', 'Warm. Quiet. Plenty of room.'],
+        hidden: ['Nobody on board looks like they slept in their clothes. Nobody looks like they slept.', 'Nobody on board has a phone out.'],
+        board: { kind: 'comply', do: (G) => G.end('crew') },
+      };
+      const lagoon = {
+        key: 'lagoon',
+        art: { livery: '#3e9c9a', windows: 'cold', passengers: 'few', sign: 'print', driver: 'plain', ground: 'day' },
+        name: 'A turquoise minibus',
+        sign: 'BLUE LAGOON SHUTTLE — Relax. You deserve it.', signStyle: 'print',
+        look: ['Driver holding a stack of white towels.', 'Smells of sulphur and eucalyptus.'],
+        hidden: ['Everyone aboard has clean socks.', 'It leaves in two minutes. It always leaves in two minutes.'],
+        board: { do: (G) => G.end('tantalus') },
+      };
+      return G.shuffle([flybus, crest, lagoon]);
+    },
+    choices: [
+      { label: 'Wait for the next one. There is always a next one.', kind: 'comply', dd: 5, nd: 4, time: 60, next: (G) => (G.t >= T(1, 12, 30) ? 'end:arrangements' : 'lind_buses'), do: (G) => { G.nerves(5); G.dread(4); } },
+    ],
+  };
+
+  scenes.ride3 = {
+    art: 'road',
+    loc: 'Route 41 · toward Keflavík',
+    enter: (G) => {
+      G.at(T(1, 12, 0), 'email', { from: 'Albion Atlantic Customer Care', subj: 'Revised departure time', body: 'Dear Customer,\n\nYour flight AB 0271 will now depart at 15:45.\n\nCheck-in opens three hours before departure.\n\nWe are doing our best.', fx: (G) => { G.S.dep = T(1, 15, 45); } });
+      G.at(T(1, 13, 10), 'chat', { body: 'You were not at your accommodation. Why are you in a queue? 🙂' });
+    },
+    text: (G) => p(
+      'A ticket, a seat, a bus that goes where it says. The man in yesterday\'s shirt sits across the aisle and says nothing, and then, after twenty minutes, ' + V('“Thursday\'s. Hraun. Took the Flybus. Everyone else is waiting for the transfer.”') + ' He looks out of the window. ' + V('“I keep thinking I should have waited.”'),
+      'Iceland goes past: lava, great tap water, reasonably nice people who do not threaten you or lie to you. The driver checks nobody\'s name. Huge ups to Iceland for that. Keflavík is innocent.',
+    ),
+    choices: [{ label: 'Arrive.', time: 45, do: (G) => { G.nerves(-4); G.collect(1); }, next: 'airport' }],
+  };
+
   /* ================================================================ endings */
   const endings = {
     terminal: {
@@ -1008,9 +1465,9 @@ CONTENTS.en = (() => {
     accommodated: {
       art: 'road', title: 'ACCOMMODATED', kind: 'bad',
       hint: 'The email had the logo on it.', blurb: 'You confirmed the booking.',
-      text: p(
-        'The car is warm and the seats are leather and the driver does not speak. The screen on the dash says HEATHROW RENAISSANCE LODGE · 1,894 km · ARRIVAL —:—.',
-        'You watch the airport lights shrink. After a while there are no lights at all — only the sound of the tyres, and the little chime of a new email, arriving to confirm that your accommodation has been arranged.',
+      text: (G) => p(
+        'The car is warm and the seats are leather and the driver does not speak. The screen on the dash says ' + (G.has('lind') ? 'HÓTEL HRAUN · —— km · ARRIVAL —:—.' : 'HEATHROW RENAISSANCE LODGE · 1,894 km · ARRIVAL —:—.'),
+        (G.has('lind') ? 'You watch the city lights shrink.' : 'You watch the airport lights shrink.') + ' After a while there are no lights at all — only the sound of the tyres, and the little chime of a new email, arriving to confirm that your accommodation has been arranged.',
       ),
     },
     crew: {
@@ -1019,7 +1476,7 @@ CONTENTS.en = (() => {
       text: (G) => p(
         'The coach smells of new upholstery and nothing else. Everyone smiles at you as you pass. Nobody is wearing yesterday\'s clothes, because nobody here has a yesterday.',
         'The purser closes the door with a soft, expensive sound. ' + V('“The majority of our customers have been understanding and patient.”') + ' He means you. You have been understanding. You have been very patient.',
-        G.has('at_hotel') ? 'The coach pulls out of the light, and the car park behind it is empty, and has been for some time.' : 'The coach pulls out of the light, and the stand behind it is empty, and has been for some time.',
+        (G.has('lind') || (G.has('detoured') && !G.has('at_hotel'))) ? 'The coach pulls out of the light, and the bay behind it is empty, and has been for some time.' : G.has('at_hotel') ? 'The coach pulls out of the light, and the car park behind it is empty, and has been for some time.' : 'The coach pulls out of the light, and the stand behind it is empty, and has been for some time.',
       ),
     },
     convenience: {
@@ -1034,8 +1491,8 @@ CONTENTS.en = (() => {
       art: 'corridor', title: 'NIGHT COACH', kind: 'bad',
       hint: 'Last call.', blurb: 'You answered the knock.',
       text: (G) => p(
-        G.has('nc_carpark') ? 'You walk to the door of the coach. The man in navy steps aside without looking at you. ' + V('“Departing now,”') + ' he says, to the hotel, and it is the only instruction anyone has given you all night that came with a time attached.' : G.has('nc_corridor') ? 'He stops knocking. He does not turn round. ' + V('“Departing now,”') + ' he says, to the door in front of him, and walks to the stairwell, and you follow, because it is the only instruction anyone has given you all night that came with a time attached.' : 'The corridor is empty and the carpet is wet. From the stairwell: ' + V('“Departing now.”') + ' You follow it, because it is the only instruction anyone has given you all night that came with a time attached.',
-        'The coach in the car park is waiting with its interior lights on. Everyone inside is already facing the hotel. There is a seat with your name on it. There is, in fact, a small printed card with your name on it, in Arial.',
+        G.has('coach_seen_street') && G.S.scene !== 'lind_knock' ? 'You walk down the hill. The man at the door steps aside without looking at you. ' + V('“Departing now,”') + ' he says, to the street, and it is the only instruction anyone has given you all night that came with a time attached, and they knew the room.' : G.has('nc_lind') ? 'The landing is empty and the stairs are empty and the front door, which she locked, is open onto the street. From the street: ' + V('“Departing now.”') + ' You follow it, because it is the only instruction anyone has given you all night that came with a time attached, and because they knew the room.' : G.has('nc_carpark') ? 'You walk to the door of the coach. The man in navy steps aside without looking at you. ' + V('“Departing now,”') + ' he says, to the hotel, and it is the only instruction anyone has given you all night that came with a time attached.' : G.has('nc_corridor') ? 'He stops knocking. He does not turn round. ' + V('“Departing now,”') + ' he says, to the door in front of him, and walks to the stairwell, and you follow, because it is the only instruction anyone has given you all night that came with a time attached.' : 'The corridor is empty and the carpet is wet. From the stairwell: ' + V('“Departing now.”') + ' You follow it, because it is the only instruction anyone has given you all night that came with a time attached.',
+        G.has('nc_lind') ? 'The coach fills the street from wall to wall, interior lights on. Everyone inside is already facing the guesthouse. There is a seat with your name on it. There is, in fact, a small printed card with your name on it, in Arial, and under it, smaller: <em>alternative arrangements</em>.' : 'The coach in the car park is waiting with its interior lights on. Everyone inside is already facing the hotel. There is a seat with your name on it. There is, in fact, a small printed card with your name on it, in Arial.',
       ),
     },
     lift: {
@@ -1051,7 +1508,7 @@ CONTENTS.en = (() => {
       hint: 'You have always wanted to visit Iceland.', blurb: 'You went to the hot springs.',
       text: (G) => p(
         G.has('toothpaste') ? 'The water is 38°C and the sky is the colour of a used tissue and you are wearing the socks from the 10-11, the most beautiful socks you have ever seen, now full of sulphur. It is, objectively, beautiful.' : 'The water is 38°C and the sky is the colour of a used tissue and you are wearing the socks from the flight because you have no other socks. It is, objectively, beautiful.',
-        'At 11:00 a bus leaves a hotel car park thirty kilometres away without you. At 11:04 an email arrives to say your coach departed at 09:00. At 11:05 the chatbot asks whether you enjoyed your stay.',
+        G.has('lind') ? 'At 09:00, 10:00 and 11:00, yellow buses leave BSÍ without you, with tickets you did not buy. At 11:04 an email arrives to say your transfer departed at 09:00. At 11:05 the chatbot asks whether you enjoyed your stay.' : 'At 11:00 a bus leaves a hotel car park thirty kilometres away without you. At 11:04 an email arrives to say your coach departed at 09:00. At 11:05 the chatbot asks whether you enjoyed your stay.',
         'Sure wish you hadn\'t been holding that monkey\'s paw when you said it.',
       ),
     },
@@ -1077,6 +1534,15 @@ CONTENTS.en = (() => {
       text: p(
         'The bus stops, which is what you wanted. The door opens onto a lay-by, a fence, sheep, and a wind that has come a long way to meet you. ' + V('“As you wish,”') + ' says the driver, and the bus goes on without you, toward something that might, at that distance, be an aircraft.',
         'Iceland has done nothing wrong. The sheep are very nice.',
+      ),
+    },
+    arrangements: {
+      art: 'street', title: 'ALTERNATIVE ARRANGEMENTS', kind: 'bad',
+      hint: 'It was confirmed. Everyone said so.', blurb: 'You waited for the transfer from a hotel the airline never booked.',
+      text: (G) => p(
+        'The coach smells of nothing. Everyone on it has toothpaste and clean socks and a full battery, and nods at you as you pass, because you are one of them now: Tuesday\'s, Thursday\'s, yours. The clerk stands in the doorway with the paperback against her chest and does not wave. She has seen this before. She will put out the skyr tomorrow.',
+        'On everyone\'s phone at once, ' + ALLY(G) + ': ' + V('“Thank you for your patience. Your transfer is confirmed.”') + ' The coach goes past BSÍ, past the yellow bus with its door open, past the turning for the airport, and keeps going, out past the lava, toward a hotel that is expecting you.',
+        'You are, finally, exactly where you were arranged to be.',
       ),
     },
     home: {
@@ -1114,6 +1580,7 @@ CONTENTS.en = (() => {
     from: 'From:', sent: 'Sent', received: 'Received', arrived: 'arrived', photographed: 'Photographed',
     tMail: 'MAIL', tSms: 'SMS', tPaper: 'PAPER', tAlly: 'ALLY', tNoted: 'NOTED · The airline has recorded your feedback.',
     gateNerves: 'You couldn\'t keep your voice steady for that.', gateDread: 'You can\'t bring yourself to.',
+    tFlood: '{n} new notifications.', phoneDead: 'No power',
   };
 
   return { start, scenes, endings, chat, ui, T, lang: 'en', broken: CONTENT_BROKEN };

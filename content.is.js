@@ -25,6 +25,8 @@ CONTENTS.is = (() => {
   const CONTENT_BROKEN = {};
   const LX = (s) => { try { const S = (typeof Game !== 'undefined' ? Game : window.Game).state; if (S && S.flags.fr_asked && CONTENT_BROKEN[s]) return CONTENT_BROKEN[s]; } catch (e) { /* ignore */ } return s; };
   const atLeast = (G, v) => { if (G.S.dread < v) G.S.dread = v; }; // v in percent
+  // the chatbot is called Ally, but the narration only calls it that once the player has opened it
+  const ALLY = (G) => (G.S.chat.some((m) => m.who === 'bot' && m.read) ? 'Ally' : 'spjallmenni flugfélagsins');
   const hub = (G, status, key, extra) => p(status, G.last(), G.amb(key, AMB[key]), extra);
   const KNOCK_AT = T(1, 4, 30);
 
@@ -126,14 +128,15 @@ CONTENTS.is = (() => {
   const tail = (G) => {
     const d = G.D;
     if (d >= 5) return '\n\n' + G.pick(['Af hverju ert þú ennþá hér?', 'Meirihluti viðskiptavinir hafa farið um borð.', 'Við getum séð að þú ert ennþá þar.']);
-    if (d >= 3) return '\n\n' + G.pick(['Þú ert ennþá í herbergi 214.', 'Vinsamlegast haldast þar sem þú ert.', 'Er það eitthvað annað? Það er ekkert annað.']);
+    if (d >= 3) return '\n\n' + G.pick([G.has('lind') ? 'Þú ert ennþá í herbergi 7.' : 'Þú ert ennþá í herbergi 214.', 'Vinsamlegast haldast þar sem þú ert.', 'Er það eitthvað annað? Það er ekkert annað.']);
     return '';
   };
   const chat = [
     {
       label: 'Hvar er hótelið mitt?',
       answer: (G) => {
-        if (G.has('at_airport2')) return 'Gisting þín var Hótel Hraun. Við vonum þú naust dvöl þinni! Viltu skilja eftir umsögn?' + tail(G);
+        if (G.has('at_airport2')) return (G.has('lind') ? 'Gisting þín var Hótel Hraun. Skrár okkar sýna þú notaðir hana ekki. Viltu skilja eftir umsögn?' : 'Gisting þín var Hótel Hraun. Við vonum þú naust dvöl þinni! Viltu skilja eftir umsögn?') + tail(G);
+        if (G.has('lind')) return 'Gisting þín er Hótel Hraun. Þú ert á Hótel Lind, herbergi 7. Vinsamlegast snúa aftur til gistingar þinnar.' + tail(G);
         if (G.has('at_hotel')) return 'Þú ert á Hótel Hraun, herbergi 214. Vinsamlegast haldast í herbergi þínu þar til safnað.' + tail(G);
         return 'Frábær spurning! Gisting þín hefur verið röðuð á Heathrow Renaissance Lodge, Bath Road. Bókunarhlekkur hefur verið tölvupóstaður til þín. 🛏️';
       },
@@ -142,7 +145,9 @@ CONTENTS.is = (() => {
       label: 'Hvenær fer rútan?',
       answer: (G) => {
         if (G.has('at_airport2')) return 'Rúta þín til loftfarsins fer þegar boarding er lokið. Vinsamlegast fara um borð eftir hópi. 🚌' + tail(G);
+        if (G.has('morning') && G.has('lind')) return 'Flutningur þinn frá Hótel Lind er staðfestur fyrir 09:00. Vinsamlegast bíða í lobbýinu. 🚌' + tail(G);
         if (G.has('morning')) return 'Flutningur þinn til flugvöllinn er staðfestur fyrir 08:00. Vinsamlegast vera í lobbýinu 15 mínútur snemma.' + tail(G);
+        if (G.has('lind')) return 'Ökutæki hefur verið raðað til að skila þér til gistingar þinnar kl. 04:30. Meðlimur starfsfólks mun banka.' + tail(G);
         if (G.has('at_hotel')) return 'Rúta þín fer kl. 04:30. Meðlimur starfsfólks mun banka.' + tail(G);
         return 'Rútur hafa verið skipulagðar fyrir alla viðskiptavinir. Vinsamlegast halda áfram til rúturnar. 🚌';
       },
@@ -183,8 +188,9 @@ CONTENTS.is = (() => {
       '<em>Lestu allt.</em> Síminn þinn (til hægri, eða undir SÍMI-hnappnum) fær tölvupósta frá flugfélaginu, skilaboð frá spjallmenni sem heitir Ally, smáskilaboð, og ljósmyndir af hverju prentuðu skilti sem þú rekst á. Einhver segir satt. Það er ekki alltaf sá sem er með merkið.',
       '<em>Tveir mælar.</em> Báðir fyllast. Hvorugur bindur enda á leikinn. Það sem þeir gera er að loka dyrum: eftir því sem mælir fyllist hættir sumt af því sem þú hefðir getað sagt eða gert að standa til boða, og það sem eftir er, er það sem eftir er. Litlar ákvarðanir fylla þá. Svefn, matur og annað fólk tæma þá, örlítið.',
       '<em>Skráð</em> telur kvartanirnar sem flugfélagið hefur skráð á þig. Við þrjár bregst það við – þar sem það getur.',
+      '<em>Rafhlaðan</em> er tala úti í horni á símanum. Hún lækkar. Þegar hún er komin niður í ekkert fer síminn sömu leið, og það sem berst eftir það berst engum, þar til þú finnur leið til að vekja hann aftur – og þá berst það allt í einu.',
       'Staðir eru rými sem þú getur farið um. Það tekur mínútur að gera hluti; klukkan gengur aðeins þegar þú aðhefst eitthvað. Rútur koma og fara. Skoðaðu þær vel áður en þú ferð um borð. Sú rétta lítur út eins og þér líður.',
-      'Hver umferð tekur tuttugu til þrjátíu mínútur. Endarnir eru tólf, og einn þeirra er Los Angeles.',
+      'Hver umferð tekur tuttugu til þrjátíu mínútur. Endarnir eru þrettán, og einn þeirra er Los Angeles.',
     ),
     choices: [{ label: 'Til baka', next: 'title' }],
   };
@@ -291,9 +297,9 @@ CONTENTS.is = (() => {
       'Það slær þögn á. Maðurinn við eldhúsið sest niður. Það slokknar á kallhnappnum. Þremur röðum aftar hlær einhver einu sinni, og hættir.',
       G.has('objected') && W('Hann horfir ekki á manninn við eldhúsið. Hann horfir á þína röð.'),
     ),
-    choices: [
+    choices: (G) => [
       { label: 'Kyngja því.', kind: 'comply', dd: 3, time: 15, do: (G) => G.note('Þú kyngdir því. Það gerðu allir. Það er merkilegt hve fljótt tvö hundruð manns geta ákveðið að hafa verið þolinmóð allan tímann.'), next: 'cabin2' },
-      { label: 'Líta í kringum sig. Athuga hverjir aðrir mótmæltu.', time: 15, do: (G) => { G.nerves(-2); G.note('Fjögur andlit, kannski fimm, enn stíf. Maðurinn við eldhúsið. Kona með smábarn. Þú leggur þau á minnið eins og þú myndir leggja neyðarútganga á minnið.'); }, next: 'cabin2' },
+      { label: G.has('objected') ? 'Líta í kringum sig. Athuga hverjir aðrir mótmæltu.' : 'Líta í kringum sig. Athuga hverjir mótmæltu.', time: 15, do: (G) => { G.nerves(-2); G.note('Fjögur andlit, kannski fimm, enn stíf. Maðurinn við eldhúsið. Kona með smábarn. Þú leggur þau á minnið eins og þú myndir leggja neyðarútganga á minnið.'); }, next: 'cabin2' },
       { label: 'Hlæja. Einu sinni.', kind: 'conflict', nd: 3, dd: -2, time: 15, do: (G) => G.note('Þú hlóst, einu sinni, og einhver tveimur röðum aftar hló með þér, og svo hættuð þið bæði, því yfirflugþjónninn hafði lagt símtólið frá sér mjög varlega og horfði aftur eftir ganginum.'), next: 'cabin2' },
     ],
   };
@@ -518,7 +524,7 @@ CONTENTS.is = (() => {
         sign: 'FLYBUS · REYKJAVÍK BSÍ', signStyle: 'print',
         look: ['Bílstjóri, með leiðindasvip, að fletta í spjaldtölvu.', 'Farþegar með bakpoka og töskur á hjólum.'],
         hidden: ['Þau eru með farangur. Þú ert ekki með farangur.', 'Límmiði við dyrnar: FRAMVÍSA ÞARF MIÐA.'],
-        board: { time: 5, next: 'detour' },
+        board: { time: 5, next: 'bsi' },
       };
       return G.shuffle([correct, crest, flybus]);
     },
@@ -527,16 +533,49 @@ CONTENTS.is = (() => {
     ],
   };
 
-  scenes.detour = {
-    art: 'road',
-    loc: 'Reykjanesbraut · í átt að Reykjavík',
-    text: p(
+  /* ---------------------------------------------------------------- the wrong bus: BSÍ, 02:50 */
+  scenes.bsi = {
+    art: 'bsi',
+    loc: 'Reykjavík · Umferðarmiðstöðin BSÍ',
+    enter: (G) => {
+      G.S.t = Math.max(G.t, T(1, 2, 50)); G.flag('detoured'); G.nerves(10); G.dread(6);
+      if (G.once('bsi_dead')) { G.S.batt = 0; G.S.phoneDead = true; G.S.deadAt = G.t; }
+    },
+    text: (G) => p(
       'Þegar fjörutíu mínútur eru liðnar af ferðinni spyr bakpokaferðalangur á hvaða farfuglaheimili þú gistir, og þá rennur það upp fyrir þér.',
-      'Strætóinn skilar þér á umferðarmiðstöð í bænum sem lyktar af dísilolíu og kanil. Leigubílstjóri vorkennir þér, og tekur 9.800 krónur, og ekur þér aftur út í myrkrið á hótel sem hefur verið sagt að eiga von á þér og er ekki visst um að það trúi því.',
-      'Klukkan er 03:35. Þú átt fötin sem þú stendur í. Ekki einu sinni þau góðu.',
+      'Strætóinn skilar þér á umferðarmiðstöð í bænum sem lyktar af dísilolíu og kanil. Það er verið að loka. Söluturn er að draga niður hlerann; bakpokaferðalangarnir eru þegar lagðir af stað burt, í átt að rúmum sem þeir eiga sjálfir.',
+      'Þú tekur upp símann til að athuga hvar þú ert. Hann sýnir 3%, svo kortið, svo svartan skjá með andlitinu þínu í. Þú ýtir á takkann. Þú ýtir aftur. Ekkert. Tíminn er farinn með honum; það er klukka í umferðarmiðstöðinni, og klukkan hefur stöðvast.',
+      'Og í ysta stæðinu, með vélina í gangi, kveikt á ljósunum inni, hvert einasta sæti snýr að stöðinni: dökkblá rúta með gylltu skjaldarmerki.',
     ),
-    enter: (G) => { G.S.t = T(1, 3, 35); G.nerves(18); G.flag('detoured'); G.dread(8); },
-    choices: [{ label: 'Fara inn.', next: 'hotel_arrive' }],
+    buses: (G) => [{
+      key: 'crest',
+      art: { livery: '#1b2a4a', stripe: '#c9a227', windows: 'warm', passengers: 'upright', sign: 'led', driver: 'purser', ground: 'night' },
+      name: 'Dökkblá rúta með gylltu skjaldarmerki, malandi í ysta stæðinu',
+      sign: 'ALBION ATLANTIC · YOUR ACCOMMODATION', signStyle: 'led',
+      look: ['Yfirflugþjónninn við dyrnar, með spenntar greipar, eins og honum hafi verið sagt að þú værir á leiðinni.', 'Hlýtt. Hljótt. Nóg af sætum.'],
+      hidden: ['Farþegarnir eru úthvíldir. Enginn er með síma á lofti. Enginn þarf á honum að halda.', 'Áfangastaðurinn á LED-skiltinu er ekki staður. Hann er orð.'],
+      board: { kind: 'comply', do: (G) => G.end('crew') },
+    }],
+    choices: [
+      { label: 'Finna leigubíl. Það er leigubílastæði við dyrnar.', whyNot: 'Þú getur ekki snúið baki í rútuna.', dreadMax: 88, dd: -3, time: 10, next: 'taxi' },
+      { label: 'Setjast inni í stöðinni. Einhver kemur.', kind: 'comply', dd: 6, time: 20, once: 'bsi_sit', do: (G) => { G.nerves(4); G.note('Tuttugu mínútur á plaststól. Ræstingafólkið þreif í kringum þig. Rútan fór ekki. Á einhverjum tímapunkti kom maður í endurskinsvesti, stóð í dyragættinni og sagði, á ensku, ekki óvinsamlega: ' + V(LX('„Við erum að loka. Það er leigubíll fyrir utan.“'))); }, next: 'bsi' },
+    ],
+  };
+
+  /* ---- the taxi, and the only person all night who takes you where you ask ---- */
+  scenes.taxi = {
+    art: 'road',
+    loc: 'Leigubíll · Reykjavík, á leið út úr bænum',
+    enter: (G) => { if (G.once('taxi_in')) G.note(p(G.last(), 'Leigubíll, hlýr, lyktar af furu og kvöldmatnum hjá einhverjum. Bílstjórinn er um sextugt, með lágt stillt útvarp á íslensku sem gæti verið veðurfréttirnar, og hann horfir á þig í speglinum um stund áður en hann segir nokkuð. ' + V(LX('„Albion Atlantic?“')) + ' Þú hefur ekki sagt orð. ' + V(LX('„Fötin. Allir úr þessu flugi líta út eins og þeir hafi sofið í stól. Hvert á að fara?“')))); },
+    text: (G) => p(G.last(), 'Mælirinn gengur. Úti er borgin þriggja gatna djúp, og svo tekur myrkrið við.'),
+    choices: (G) => [
+      { label: 'Sýna honum tölvupóstinn. Heathrow Renaissance Lodge, Bath Road.', time: 3, once: 'taxi_mail', do: (G) => { G.nerves(-2); G.note(V(LX('„Heathrow.“')) + ' Hann les hann tvisvar í speglinum og hlær, stuttum hlátri sem beinist ekki að þér. ' + V(LX('„Á hverju kvöldi sýnir mér einhver þennan. Á hverju kvöldi stendur Heathrow. Ég get keyrt þig út á flugvöll og þú getur flogið þangað, ef þú vilt. Annars er þetta ekki sérlega gagnlegur tölvupóstur.“')) + ' Hann réttir þér símann aftur, varlega, eins og það gæti verið smitandi.'); }, next: 'taxi' },
+      { label: 'Spyrja hann hvað hann viti um flugið.', nd: -2, time: 5, once: 'taxi_week', do: (G) => { G.flag('driver_week'); G.collect(1); G.note(V(LX('„Flugið þitt? Ég þekki flugið þitt. Allir sem keyra á nóttunni þekkja flugið þitt.“')) + ' Hann telur á fingrum lausu handarinnar. ' + V(LX('„Á mánudaginn lenti það klukkan eitt. Þriðjudag, eitt. Miðvikudag, fimmtudag, í kvöld. Sama númer, sami tími, tvö hundruð manns án yfirhafna. Á hverju kvöldi segir flugfélagið þeim að bíll bíði fyrir utan. Á hverju kvöldi er ég fyrir utan, og ég er ekki bíllinn. Enginn frá þessu fyrirtæki hefur hringt í mig, eða borgað mér, eða neinum sem ég þekki.“')) + ' Þögn, og þurrkurnar. ' + V(LX('„Fólkið keyri ég þangað sem það biður um. Vandinn er að flest þeirra vita ekki um hvað á að biðja.“'))); }, next: 'taxi' },
+      { label: 'Spyrja hann hvert hinir fóru.', if: (G) => G.has('driver_week'), nd: -1, time: 4, once: 'taxi_where', do: (G) => { G.flag('driver_where'); G.note(V(LX('„Út fyrir hraunið, eitthvað. Hvít rúta sækir þau, þegar það er hvít rúta. Hvaða hótel – ég veit það ekki. Það eru fimm þarna úti og þau líta öll út eins og ráðstefna sem aldrei varð.“')) + ' Hann lítur á þig í speglinum. ' + V(LX('„Ef þú getur sagt mér hvert þeirra, þá keyri ég þig þangað. Ef þú getur það ekki, þá keyri ég þig þangað sem ég keyri alla sem geta það ekki: á gistiheimili í bænum. Konan sem rekur það er alltaf vakandi. Lítill staður, hreinn, verðið er heiðarlegt, og hún hefur fengið einn af ykkur á hverju kvöldi þessa viku.“'))); }, next: 'taxi' },
+      { label: 'Biðja hann um að keyra þig frekar aftur út á flugvöll.', time: 3, once: 'taxi_back', do: (G) => { G.nerves(2); G.dread(2); G.note(V(LX('„Keflavík er lokuð til fimm. Ég get keyrt þig í fjörutíu mínútur að læstri hurð, ef þú vilt borga fyrir það.“')) + ' Hann hljómar ekki eins og hann sé að grínast. Hann hljómar heldur ekki eins og hann myndi neita.'); }, next: 'taxi' },
+      { label: 'Segja honum frá hvítu rútunni. Pappírsskiltinu, bílstjóranum í endurskinsvestinu, þeirri sem þú fórst ekki í.', whyNot: 'Þú gætir ekki talað um það kurteislega, og hann er sá eini sem hefur spurt.', nerveMax: 70, if: (G) => G.has('driver_where') && (G.S.looked['buses1:plain'] || G.did('talk_fleece') || G.did('talk_mother') || G.did('talk_couple') || G.has('ally31c')), sub: '9.800 krónur, segir hann, að fara þangað út eftir. Kortið virkaði í þriðju tilraun í sjálfsalanum.', time: 40, do: (G) => { G.flag('taxi_hraun'); G.S.t = T(1, 3, 35); G.nerves(6); G.dread(2); G.note(V(LX('„Hvítu rúturnar. Já. Það er Hraun. Fjörutíu mínútur. Níu þúsund og átta hundruð, og ég vildi gjarnan fá það á kortið áður en við förum út fyrir ljósin, ef þér er sama. Ég hef brennt mig þessa vikuna.“')) + ' Kortið virkar. Borgin endar. Hraun, undir lágum himni, og vegur með einni hvítri línu sem hverfur í sífellu. Hann talar ekki, en útvarpið gerir það. Kl. 03:35 beygir hann inn að lágreistu, víðáttumiklu hóteli sem er upplýst eins og fiskabúr, og segir ' + V(LX('„Gangi þér vel,“')) + ' með rödd manns sem meinar það og býst ekki við að það hjálpi.'); }, next: 'hotel_arrive' },
+      { label: 'Gistiheimilið, þá. Hvert sem er með rúmi og kveiktu ljósi.', kind: 'comply', dd: 4, time: 8, do: (G) => { G.flag('gunnar'); G.note(V(LX('„Lind. Gott. Þrjár mínútur.“')) + ' Fjögur horn, mjóar dyr með lampa yfir, og mælir sem sýnir minna en þú óttaðist. Hann blikkar ljósunum á dyrnar, tvisvar, og ljós kviknar bak við möttu rúðuna. ' + V(LX('„Segðu henni að Gunnar hafi sent þig. Hún veit orðið hvað það þýðir.“'))); }, next: 'lind_arrive' },
+    ],
   };
 
   /* ---------------------------------------------------------------- the ride */
@@ -581,7 +620,7 @@ CONTENTS.is = (() => {
   };
 
   /* ---- the room (hub) ---- */
-  const roomStatus = (G) => `Herbergi 214. ${G.clock(G.t)}. Þú ert of úrvinda til að sofa${G.has('toothpaste') ? '' : ', og þú ert með óhreinar tennur'}${G.has('dinner') ? '' : ', og þú hefur ekkert borðað'}.`;
+  const roomStatus = (G) => `Herbergi 214. ${G.clock(G.t)}. Þú ert of úrvinda til að sofa${G.has('toothpaste') ? '' : ', og þú ert með óhreinar tennur'}${G.has('dinner') ? '' : ', og þú hefur ekkert borðað'}${G.dead() ? ', og síminn er dauður' : G.battery() <= 10 ? `, og síminn er í ${G.battery()}%` : ''}.`;
 
   scenes.room = {
     art: 'room',
@@ -590,6 +629,7 @@ CONTENTS.is = (() => {
       G.flag('loc_room');
       if (G.t >= KNOCK_AT && !G.has('knocked')) { G.go('knock'); return; }
       if (G.t >= T(1, 6, 0)) { G.flag('allnighter'); G.go('sleep'); return; }
+      if (G.dead() && !G.has('phone_scene')) { G.go('phone_dies'); return; }
       if (G.once('room_intro')) G.note(p(G.last(), 'Rúm, hraðsuðuketill, sjónvarp, gluggi sem snýr út að bílastæðinu, og pínulitlar flöskur af sjampói og hárnæringu sem þér er þegar farið að detta í hug að bursta tennurnar með. Á hurðinni er öryggiskeðja. Þú setur keðjuna á. Svo tekurðu hana af, til vonar og vara, og setur hana aftur á.'));
     },
     text: (G) => hub(G, roomStatus(G), 'room'),
@@ -603,9 +643,9 @@ CONTENTS.is = (() => {
       { label: 'Athuga hurðina.', nd: 2, time: 2, do: (G) => { const n = G.count('door'); G.note(n === 1 ? 'Læst. Keðjan á. Þú athugar keðjuna. Þú athugar lásinn. Allt í lagi.' : n === 2 ? 'Enn læst. Keðjan enn á. Þú vissir það.' : n === 3 ? 'Þú athugar hurðina aftur. Þú gerir þér grein fyrir því að þú ert að athuga hurðina aftur. Hún er læst. Hún hefur alltaf verið læst. Þú stendur með höndina á henni um stund.' : 'Læst. Þú veist ekki lengur að hverju þú ert að gá. Hvort hún sé læst, eða hvort hún sé yfirhöfuð enn hurð.'); if (n >= 3) G.dread(1); }, next: 'room' },
       { label: 'Hlusta við hurðina.', whyNot: 'Þú vilt ekki vita það.', nd: 3, dreadMax: 90, time: 4, do: (G) => { const d = G.D; G.dread(2); G.nerves(3); G.note(G.pick(d >= 4 ? ['Fótatak. Hægt, jafnt, nemur staðar við hverja hurð. Nemur staðar við þína. Heldur áfram.', 'Vagn á hjólum, í hinum enda gangsins. Hann stöðvast. Hann fer ekki aftur af stað.', 'Bank, langt frammi á ganginum. Þolinmótt. Svo nær.'] : ['Ekkert. Suðið á ganginum. Hurð, langt í burtu, sem lokast.', 'Einhver gengur hratt fram hjá, á sokkaleistunum. Einhver annar, hægt, á skóm.', 'Ísvélin, malandi, úr hinum enda gangsins. Svo hlátur, í næsta herbergi, sem hættir snögglega.'])); }, next: 'room' },
       { label: 'Hringja í móttökuna úr herbergissímanum.', kind: 'comply', dd: 1, time: 5, once: 'roomphone', do: (G) => { G.dread(2); G.note('Það hringir lengi. Svo næturvörðurinn, og hljómar eins og hún hafi annaðhvort verið sofandi eða aldrei sofið: ' + V(LX('„Já, 214?“')) + ' Þú hafðir ekki nefnt herbergisnúmerið þitt. Þú spyrð um rútuna. ' + V(LX('„Ellefu. Það stendur ellefu. Kannski ættirðu að sofa.“'))); }, next: 'room' },
-      { label: 'Fletta upp réttindum þínum.', whyNot: 'Réttindi eru eins og framandi land núna.', dd: -6, dreadMax: 85, sub: G.did('post') ? 'Það er til reglugerð. Einhver í svörunum hjá þér er viss um það.' : 'Það er til reglugerð. Þú ert næstum viss um að það sé til reglugerð.', time: 15, once: 'rights', do: (G) => { G.flag('uk261'); G.nerves(-6); G.msg('paper', { from: 'Skjáskot, svo QR-kóði sem þú bjóst til upp á eigin spýtur', subj: 'UK261', body: '<b>UK261 / EC261 — RÉTTINDI ÞÍN</b>\n\nVið svona langa seinkun ber flugfélaginu að útvega: máltíðir, hótel, akstur og fjarskipti.\n\nÞeir munu streitast á móti. Gerðu samt kröfu.\n\n[ QR-KÓÐI ]' }); G.note('UK261. <em>Flugfélaginu ber að útvega.</em> Þú lest það tvisvar. Þú býrð til QR-kóða úr því, á þráðlausa netinu á hótelinu, klukkan þrjú að nóttu, og þú veist ekki hvers vegna, nema hvað þú ætlar að sýna hann öllum sem þú sérð í morgunmatnum.'); }, next: 'room' },
-      { label: 'Skrifa um þetta á netið.', time: 8, once: 'post', do: (G) => { if (G.D >= 4) { G.nerves(4); G.note('Þú skrifar þetta allt upp – áhöfnina, hurðina, tölvupóstinn, rútuna – og ýtir á „birta“, og litla hjólið snýst, og snýst. Eitt strik. Ekkert strik. Færslan situr þarna, ósend, stíluð á engan.'); } else { G.nerves(-3); G.note('Þú birtir það. Lol, skrifarðu. Lmao. Innan tíu mínútna: 1,4 þúsund læk, og fjörutíu manns að segja þér frá heitu laugunum. Þú leggur símann á grúfu á sængina.'); } }, next: 'room' },
-      { label: 'Hlaða símann.', nd: 2, time: 2, once: 'charge', do: (G) => { G.nerves(3); G.note(`Hleðslutækið er í töskunni. Taskan er í kerfinu. Síminn er í ${G.battery()}%, og hann veit það, og dimmir skjáinn til að segja þér það.`); }, next: 'room' },
+      { label: 'Fletta upp réttindum þínum.', whyNot: 'Réttindi eru eins og framandi land núna.', dd: -6, dreadMax: 85, if: (G) => !G.dead(), sub: G.did('post') ? 'Það er til reglugerð. Einhver í svörunum hjá þér er viss um það.' : 'Það er til reglugerð. Þú ert næstum viss um að það sé til reglugerð.', time: 15, once: 'rights', do: (G) => { G.flag('uk261'); G.nerves(-6); G.batt(-2); G.msg('paper', { from: 'Skjáskot, svo QR-kóði sem þú bjóst til upp á eigin spýtur', subj: 'UK261', body: '<b>UK261 / EC261 — RÉTTINDI ÞÍN</b>\n\nVið svona langa seinkun ber flugfélaginu að útvega: máltíðir, hótel, akstur og fjarskipti.\n\nÞeir munu streitast á móti. Gerðu samt kröfu.\n\n[ QR-KÓÐI ]' }); G.note('UK261. <em>Flugfélaginu ber að útvega.</em> Þú lest það tvisvar. Þú býrð til QR-kóða úr því, á þráðlausa netinu á hótelinu, klukkan þrjú að nóttu, og þú veist ekki hvers vegna, nema hvað þú ætlar að sýna hann öllum sem þú sérð í morgunmatnum.'); }, next: 'room' },
+      { label: 'Skrifa um þetta á netið.', time: 8, once: 'post', if: (G) => !G.dead(), do: (G) => { G.batt(-3); if (G.D >= 4) { G.nerves(4); G.note('Þú skrifar þetta allt upp – áhöfnina, hurðina, tölvupóstinn, rútuna – og ýtir á „birta“, og litla hjólið snýst, og snýst. Eitt strik. Ekkert strik. Færslan situr þarna, ósend, stíluð á engan.'); } else { G.nerves(-3); G.note('Þú birtir það. Lol, skrifarðu. Lmao. Innan tíu mínútna: 1,4 þúsund læk, og fjörutíu manns að segja þér frá heitu laugunum. Þú leggur símann á grúfu á sængina.'); } }, next: 'room' },
+      { label: 'Hlaða símann.', nd: 2, time: 2, once: 'charge', if: (G) => !G.dead(), do: (G) => { G.nerves(3); G.note(`Hleðslutækið er í töskunni. Taskan er í kerfinu. Síminn er í ${G.battery()}%, og hann veit það, og dimmir skjáinn til að segja þér það.`); }, next: 'room' },
       { label: 'Reyna að sofa.', whyNot: 'Þú getur ekki legið kyrr.', nerveMax: 80, time: 25, do: (G) => { if (G.t + 25 >= T(1, 4, 5)) { G.S.t = Math.max(G.t, KNOCK_AT - 25); G.nerves(-2); G.dread(-1); G.note('Þú leggst út af í fötunum úr fluginu, með ljósið kveikt. Loftið er mjög nálægt. Þú ert næstum því, næstum því—'); } else { G.nerves(-4); G.dread(-3); G.note(G.pick(['Þú leggst út af. Líkaminn er á Kyrrahafstíma, eða á engum tíma. Í loftinu er blettur í laginu eins og eyja. Þú horfir á hann um stund. Ekkert.', 'Augun lokuð. Vélin í rútunni – í einhverri rútu – einhvers staðar fyrir neðan gluggann, eða í eyrunum á þér. Þú sest aftur upp.', 'Þú skríður undir sængina í fötunum. Það er eins og að vera pakki. Svefninn horfir á þig úr hinum enda herbergisins og kemur ekki nær.'])); } }, next: 'room' },
       { label: 'Fara fram á gang.', time: 2, next: 'corridor' },
     ],
@@ -619,6 +659,7 @@ CONTENTS.is = (() => {
       G.flag('loc_corridor');
       if (G.t >= KNOCK_AT && !G.has('knocked')) { G.go('corridor_knock'); return; }
       if (G.t >= T(1, 6, 0)) { G.flag('allnighter'); G.go('sleep'); return; }
+      if (G.dead() && !G.has('phone_scene')) { G.go('phone_dies'); return; }
       if (G.once('corr_intro')) G.note(p(G.last(), 'Langur, lágur, teppalagður með einhverju í lit eins og marblettur. Hurðir: 210, 212, 214 – þín – 216, 218, og svo koll af kolli að brunahurð með slá þvert yfir og vírglersrúðu. Ísvél suðar við fjærendann. Lyfta, með pappírsmiða á.'));
     },
     text: (G) => hub(G, `Gangurinn. ${G.clock(G.t)}. Hver einasta hurð er lokuð. Þín er sú með ljósið kveikt.`, 'corridor'),
@@ -689,6 +730,22 @@ CONTENTS.is = (() => {
       { label: 'Stíga um borð. Það er hlýtt.', kind: 'comply', do: (G) => G.end('convenience') },
       { label: 'Halda áfram að ganga. Ekki líta á dyrnar.', whyNot: 'Þú getur ekki snúið baki í hana.', dreadMax: 75, dd: -14, time: 30, do: (G) => { G.nerves(12); G.flag('toothpaste'); G.nerves(-10); G.dread(8); G.note('Rútan malaði lengi við hliðina á þér, og svo ekki. 10-11 var uppljómuð eins og helgidómur. Tannkrem. Tannbursti. Sokkar, þrír í pakka, fallegustu sokkar sem þú hefur á ævinni séð. Þú gekkst til baka með pokann þrýstan að brjóstinu. Ekkert fór fram hjá þér á veginum. Alls ekkert, og það var einhvern veginn verra.'); }, next: 'carpark' },
       { label: 'Snúa við. Ganga til baka á hótelið. Hratt.', kind: 'comply', dd: 6, time: 15, do: (G) => { G.nerves(8); G.dread(5); G.note('Þú hljópst ekki. Þú gekkst, hratt, með rútuna á eftir þér, malandi, á sama hraða og þú, og svo ekki. Dyrnar að anddyrinu runnu upp áður en þú náðir að þeim.'); }, next: 'carpark' },
+    ],
+  };
+
+  /* ---- the phone dies ---- */
+  scenes.phone_dies = {
+    art: 'phone',
+    loc: (G) => `Hótel Hraun · Room 214 · ${G.clock(G.t)}`,
+    enter: (G) => { G.flag('phone_scene'); G.dread(4); },
+    text: (G) => p(
+      G.last(),
+      'Síminn liggur á bakinu á sænginni og sýnir 1%. Hann hefur sýnt 1% um hríð, eins og andardráttur sem er haldið niðri. Þú ert að horfa á hann þegar það gerist: skjárinn dofnar í lit herbergisins, og svo í lit einskis, og í svörtu glerinu er andlitið þitt, upplýst af engu, og horfir á móti.',
+      'Hleðslutækið er í töskunni. Taskan er í kerfinu. Klukkan á veggnum er sú eina sem þú átt núna, og hún er hótelklukka, og þú treystir henni ekki.',
+      'Hvað sem þeir senda næst, þá heyrirðu það ekki berast. Hvað sem þeir hafa ráðstafað, þá hafa þeir ráðstafað því við síma sem er dauður. Þú liggur þarna, í fötunum úr fluginu, með dökku helluna í hendinni, og hitakerfið er að hugsa um að banka.',
+    ),
+    choices: [
+      { label: 'Leggja hann á grúfu. Reyna að sofna aftur. Vona að þú vaknir.', kind: 'comply', dd: 8, time: 20, do: (G) => { G.nerves(-2); G.note('Þú leggur hann á grúfu, sem gerir ekkert, og leggst aftur út af, sem gerir ekkert, og hlustar á húsið. Svefn er ekki rétta orðið yfir það sem kemur.'); }, next: 'room' },
     ],
   };
 
@@ -773,6 +830,7 @@ CONTENTS.is = (() => {
       G.S.dread = Math.max(20, G.S.dread - 25); // daylight helps, a little
       G.nerves(G.has('allnighter') ? 6 : G.has('coffee') ? -5 : -10);
       if (G.has('toothpaste')) G.nerves(-6);
+      if (G.dead() || G.battery() < 20) { G.flag('borrowed_cable'); G.charge(35); }
       G.at(T(1, 7, 35), 'sms', { from: 'Jo 💛', body: 'OMG ERTU Á ÍSLANDI?? þú VERÐUR að fara í bláa lónið. VERÐUR. það er svona 20 mín frá flugvellinum' });
       G.at(T(1, 8, 5), 'chat', { body: 'Góðan morgun! Flutningur þinn til flugvöllinn er staðfestur fyrir 08:00. Vinsamlegast vera í lobbýinu. 🚌' });
       G.at(T(1, 9, 40), 'email', { from: 'Albion Atlantic Customer Care', subj: 'Flutningur þinn til flugvöllinn', stamp: T(1, 9, 40), body: 'Kæri Viðskiptavinur,\n\nRútur munu safna þér frá gistingu þinni kl. 09:00 fyrir endurbókað flug þitt AB 0271.\n\nVinsamlegast vera tilbúin í lobbýinu kl. 08:45.\n\nVið erum að gera okkar best.' });
@@ -781,6 +839,7 @@ CONTENTS.is = (() => {
     text: (G) => p(
       G.has('allnighter') ? 'Grá birta. 07:30. Þú svafst ekki, og þú ert enn á Íslandi.' : 'Grá birta. 07:30. Þú svafst, eða eitthvað í þá áttina, og þú ert enn á Íslandi.',
       'Morgunmaturinn er skyr, brauð og kaffi sem bragðast eins og það hafi verið lagað af einhverjum sem hefur heyrt kaffi lýst. Salurinn er fullur af fólkinu úr fluginu þínu. Allir eru í sömu fötunum og í gær. Allir bera saman bækur sínar: hvaða hótel, hvaða sækitíma, hverjum af skilaboðunum þremur, sem stangast öll á, þeir hafa kosið að trúa.',
+      G.has('borrowed_cable') && 'Einhver við næsta borð á snúru sem passar. Þú stingur símanum í samband við innstunguna hjá brauðristinni og hann kemur til baka, hægt, eins og andlit gerir, og það fyrsta sem hann gerir er að segja þér allt sem þú misstir af.',
       'Prentaða skiltið er enn límt á borðið. 11:00. Einhver hefur teiknað lítið hjarta á það.',
     ),
     choices: [{ label: 'Fá sér samt annan kaffibolla.', time: 10, next: 'hotel_morning' }],
@@ -802,7 +861,7 @@ CONTENTS.is = (() => {
       { label: 'Spyrja móttökuna hvort 11:00 sé rétt.', kind: 'comply', dd: 2, time: 10, once: 'recep', do: (G) => { G.nerves(1); G.note('Sami næturvörðurinn. Enn þá. Hún bendir á skiltið. ' + V(LX('„Annar farþegi hringdi í þá. Þeir sögðu já.“')) + ' Þögn. ' + V(LX('„Eða þeir sögðu eitthvað.“'))); }, next: 'hotel_morning' },
       { label: 'Fara aftur upp í herbergið. Fara í sturtu. Þvo þér að minnsta kosti í framan.', whyNot: 'Þú gætir ekki staðið kyrr undir henni.', nerveMax: 92, time: 25, once: 'morn_shower', do: (G) => { G.nerves(-5); G.dread(-2); G.note('Heitt vatn. Sömu fötin. Í dagsbirtu er herbergið bara herbergi: sjampóflöskurnar, hraðsuðuketillinn, glugginn sem snýr út að bílastæði með rútu á. Þú horfir ekki lengi.'); }, next: 'hotel_morning' },
       { label: 'Tala við móður smábarnsins.', whyNot: 'Þú myndir hræða barnið.', nd: -3, dd: -3, nerveMax: 80, time: 10, once: 'morn_mother', do: (G) => { G.collect(1); G.nerves(-3); G.note(V('„Hún vildi helst vera komin heim núna,“') + ' segir móðirin um smábarnið, sem er undir borðinu. ' + V('„Ég líka. Heyrðirðu bankað í nótt?“') + (G.has('knocked') ? ' Þú segir já. Hún segir: ' + V('„Við opnuðum ekki heldur.“') : ' Þú segist hafa verið niðri. Hún horfir á þig eins og það hafi verið eitthvert val. ' + V('„Við opnuðum ekki.“'))); }, next: 'hotel_morning' },
-      { label: 'Athuga stöðu flugsins á vef flugfélagsins.', dd: 3, nd: 3, time: 8, do: (G) => { const n = G.count('status'); G.dread(2); G.note(n === 1 ? 'AB 0271 · KEF → LAX · 15:10 · Á ÁÆTLUN. Á áætlun um hvað, kemur ekki fram.' : n === 2 ? 'AB 0271 · 15:10 · Á ÁÆTLUN. Svo, meðan þú horfir, 15:25. Svo aftur 15:10.' : 'Síðan vill ekki hlaðast. Svo hleðst hún, og flugið er ekki á henni. Svo er það þar. 15:10. Þú stingur símanum í vasann áður en það nær að breytast aftur.'); }, next: 'hotel_morning' },
+      { label: 'Athuga stöðu flugsins á vef flugfélagsins.', dd: 3, nd: 3, time: 8, if: (G) => !G.dead(), do: (G) => { const n = G.count('status'); G.dread(2); G.batt(-1); G.note(n === 1 ? 'AB 0271 · KEF → LAX · 15:10 · Á ÁÆTLUN. Á áætlun um hvað, kemur ekki fram.' : n === 2 ? 'AB 0271 · 15:10 · Á ÁÆTLUN. Svo, meðan þú horfir, 15:25. Svo aftur 15:10.' : 'Síðan vill ekki hlaðast. Svo hleðst hún, og flugið er ekki á henni. Svo er það þar. 15:10. Þú stingur símanum í vasann áður en það nær að breytast aftur.'); }, next: 'hotel_morning' },
       { label: G.t >= T(1, 9, 40) ? 'Fara út og svipast um eftir rútunni sem átti að koma 09:00.' : 'Fara út og svipast um eftir rútunni sem átti að koma 08:00.', kind: 'comply', dd: 5, if: (G) => G.t >= T(1, 8, 5) && G.t < T(1, 10, 0), time: 10, next: 'decoy_morning' },
       { label: 'Fara í heitu laugarnar. Þig hefur alltaf langað til þess.', sub: 'Þær eru í tuttugu mínútna fjarlægð. Það segja allir.', do: (G) => G.end('tantalus') },
       { label: 'Bíða í anddyrinu.', kind: 'comply', dd: 3, nd: 2, sub: 'Hálftíma af því.', time: 30, do: (G) => { G.nerves(3); G.dread(2); G.note(G.pick(['Hálftími. Kaffivélin, dyrnar, skiltið. Barn telur upp að hundrað og byrjar upp á nýtt.', 'Hálftími. Vekjaraklukkan hringir í símanum hjá einhverjum – stillt á Los Angeles-tíma – og allir hlæja, og svo hlær enginn.', 'Hálftími. Fyrir utan kemur rúta, og er ekki þín, og fer. Þú stendur ekki upp. Enginn gerir það.'])); }, next: 'hotel_morning' },
@@ -920,10 +979,11 @@ CONTENTS.is = (() => {
   scenes.checkin = {
     art: 'airport',
     loc: 'Keflavík · Eina afgreiðsluborðið',
-    enter: (G) => { G.S.t = Math.max(G.t, G.S.dep - 180); if (G.S.strikes >= 3) G.end('left'); },
+    enter: (G) => { G.S.t = Math.max(G.t, G.S.dep - 180); if (G.has('lind')) G.dread(4); if (G.S.strikes >= 3) G.end('left'); },
     text: (G) => p(
       'Borðið opnar á réttum tíma, það er að segja á þeim tíma sem það hafði ákveðið með sjálfu sér. Afgreiðslumaðurinn tekur vegabréfið þitt. Enginn í einkennisbúningi hefur sýnt minnsta vott af afsökun allan daginn, ekki einu sinni til málamynda, og þessi maður ætlar ekki að verða sá fyrsti. ' + V('„Við erum að gera okkar best.“'),
       G.has('booked') && 'Hann hnyklar brýnnar yfir skjánum. ' + V('„Skrár okkar sýna þú varst gistur á Heathrow Renaissance Lodge síðustu nótt.“') + ' Hann slær eitthvað inn. Hann segir að það hafi verið skráð.',
+      G.has('lind') && 'Hann hnyklar brýnnar yfir skjánum. ' + V('„Skrár okkar sýna þú notaðir ekki raðaða gistingu þína.“') + ' Hann horfir á fötin þín, sem eru sömu föt og allir aðrir eru í, og á andlitið á þér, sem er hreinna. Hann slær eitthvað inn. Hann segir ekki hvað.',
       G.has('objected') && W('Hann lítur á lítið spjald sem er fest við skjáinn, og svo á þig.'),
       G.has('seen') && W('Hann horfir á þig örlítið of lengi. ' + V('„Herbergi 214,“') + ' segir hann, ekki sem spurningu.'),
       'Brottfararspjald, volgt úr prentaranum. Hlið 12. Það er ekta. Þú skoðar það þrisvar.',
@@ -994,6 +1054,403 @@ CONTENTS.is = (() => {
     ],
   };
 
+  /* ================================================================ Hótel Lind: the other hotel
+     If the Flybus took you to the city and the taxi driver took you to the
+     nearest light, you are here: a narrow guesthouse off Laugavegur that the
+     airline never booked, with a clerk who speaks perfect English and has
+     never heard of your flight. Everything is provided. That is the problem. */
+  const lindStatus = (G) => `Herbergi 7. ${G.clock(G.t)}. ${G.dead() ? 'Síminn er dauður' : `Síminn er í ${G.battery()}%`}${G.has('lind_tp') ? '' : ', og þú ert með óhreinar tennur'}${G.has('lind_ate') ? '' : ', og þú hefur ekkert borðað'}.`;
+  const LIND_AMB = {
+    room: [
+      { d: 1, t: 'Gata. Ljósastaur. Einhver á leið heim, hægt, ekkert að flýta sér, sem virðist ósvífið mikil heppni.' },
+      { d: 1, t: 'Ofninn tifar. Húsið brakar eins og hús gerir þegar fólk sefur í því.' },
+      { d: 2, t: 'Leigubíll ekur fram hjá fyrir neðan, hægt, með kveikt á ljósinu, og stoppar ekki fyrir neinum.' },
+      { d: 2, t: 'Handan við vegginn hrýtur einhver á einhverju tungumáli.' },
+      { d: 3, t: 'Gatan er orðin auð. Hún gerði það á meðan þú varst ekki að horfa.' },
+      { d: 3, t: 'Undir ljósastaurnum á móti, enginn. Svo, andartak, ekki enginn.' },
+      { d: 4, t: 'Rútuvél, einhvers staðar í götu sem er of þröng fyrir rútu, malandi.' },
+      { d: 4, t: 'Maðurinn undir ljósastaurnum horfir ekki á húsið. Hann horfir á einn glugga.' },
+      { d: 5, t: 'Ljósið undir hurðinni þinni slokknar, kviknar aftur, og slokknar.' },
+      { d: 5, t: 'Einhver er í stiganum. Hann hefur verið í stiganum um stund. Hann er hvorki að koma upp né fara niður.' },
+    ],
+    lobby: [
+      { d: 1, t: 'Konan í móttökunni les kilju með sprungnum kili. Hún flettir. Það er það afslappaðasta sem þú hefur séð síðan yfir Grænlandi.' },
+      { d: 1, t: 'Bæklingarekki: JÖKLAR · HVALIR · NORÐURLJÓS. Einhver hér á eftir að sjá þetta allt.' },
+      { d: 2, t: 'Úr eldhúsinu, hraðsuðuketill, og lyktin af ristuðu brauði sem einhver annar á.' },
+      { d: 2, t: 'Útidyrnar eru læstar. Konan í móttökunni læsti þeim á miðnætti. Hún segir það án þess að líta upp.' },
+      { d: 3, t: 'Gestur kemur niður á sokkunum, fyllir vatnsglas og fer aftur upp. Hann leit ekki á þig. Hann leit á dyrnar.' },
+      { d: 3, t: 'Kiljan hefur ekki hreyfst. Konan í móttökunni horfir upp í loftið, á hljóð sem þú hefur ekki heyrt enn.' },
+      { d: 4, t: 'Bílljós í gegnum möttu rúðuna í útidyrunum, kyrrstæð, vélin í gangi, halda ekki áfram.' },
+      { d: 4, t: () => 'Konan í móttökunni segir, við kiljuna: ' + LX('„Hann spurði eftir þér. Ég sagði að hér væri enginn með því nafni.“') },
+      { d: 5, t: 'Útidyrnar eru ólæstar. Konan í móttökunni er viss um að hún hafi læst þeim.' },
+    ],
+    street: [
+      { d: 1, t: 'Frost á bílunum. Bakarí sem opnar eftir þrjá tíma fyrir fólk sem er ekki þú.' },
+      { d: 2, t: 'Leigubíll ekur þvert yfir götuendann með kveikt á ljósinu, hægt, og beygir ekki inn.' },
+      { d: 2, t: 'Einhvers staðar lokast hurð, og einhver hlær einu sinni, innandyra, í hlýju herbergi.' },
+      { d: 3, t: 'Ljósastaurinn á móti flöktir, jafnar sig, flöktir. Undir honum, enginn. Svo enginn aftur, öðruvísi.' },
+      { d: 3, t: 'Vél í gangi, einhvers staðar fyrir neðan brekkuna. Hún hefur malað þar um stund.' },
+      { d: 4, t: 'Maðurinn undir ljósastaurnum á móti hefur ekki hreyft sig. Hann horfir ekki á þig. Hann horfir á dyrnar sem þú komst út um.' },
+      { d: 5, t: 'Konan í móttökunni er ekki lengur við rúðuna. Ljósið í anddyrinu logar. Anddyrið er autt.' },
+    ],
+    morning: [
+      { d: 1, t: 'Gott kaffi. Alvöru kaffi, úr vél sem ber nafn. Þú heldur á bollanum um stund áður en þú drekkur.' },
+      { d: 2, t: 'Tveir bakpokaferðalangar eru að skipuleggja daginn. Jökull kemur við sögu. Þú hlustar á það eins og þú myndir hlusta á veðurfréttir frá annarri plánetu.' },
+      { d: 2, t: 'Við næsta borð les maður í hreinni skyrtu tölvupóst og kinkar kolli til hans.' },
+      { d: 3, t: 'Konan við gluggann hefur verið hér síðan á þriðjudag. Hún segir það glaðlega. Hún segir að flutningurinn sé staðfestur.' },
+      { d: 3, t: 'Enginn við Albion-borðið hefur litið á brottfarartöfluna. Þau horfa á símana sína, og símarnir segja þeim að bíða.' },
+      { d: 4, t: 'Einhver við Albion-borðið hlær að einhverju sem síminn sagði. Allir við borðið hlæja. Svo halda þau áfram að bíða.' },
+      { d: 4, t: 'Konan í móttökunni bætir við skyri. Hún hefur gert þetta áður. Hún hefur gert þetta á hverjum morgni þessa viku.' },
+      { d: 5, t: 'Það er laust sæti við Albion-borðið. Það er lagt á borð fyrir það. Á litlu spjaldi við diskinn stendur nafnið þitt, í Arial.' },
+    ],
+  };
+
+  // the flood: everything the airline sent while the phone was dark, and the things it sends to a customer who has made alternative arrangements
+  function lindFlood(G) {
+    const msgs = [];
+    const E = (subj, body, dd = 2) => msgs.push({ ch: 'email', from: 'Albion Atlantic Customer Care', subj, body, dd });
+    const X = (body, dd = 1) => msgs.push({ ch: 'sms', from: 'AlbionATL', body, dd });
+    const A = (body, dd = 1) => msgs.push({ ch: 'chat', body, dd });
+    E('Gisting þín', 'Kæri Viðskiptavinur,\n\nSkrár okkar sýna að þú hefur ekki innritað þig á raðaða gistingu þína.\n\nVinsamlegast halda áfram til gistingar þinnar.\n\nVið erum að gera okkar best.');
+    A('Við sjáum þú hefur gert aðrar ráðstafanir. 🙂');
+    X('AB0271: Þú ert ekki á gistingu þinni. Vinsamlegast halda áfram til gistingar þinnar. Ekki svara.');
+    A('Aðrar ráðstafanir þínar hafa verið skráðar.');
+    E('Aðrar ráðstafanir — aðgerð krafist', 'Kæri Viðskiptavinur,\n\nViðskiptavinir sem gera aðrar gistingar ráðstafanir gera það á eigin áhættu og kostnað. Albion Atlantic getur ekki ábyrgst áframhaldandi flutning fyrir viðskiptavinir sem eru ekki á raðaðri gistingu þeirra.\n\nVinsamlegast snúa aftur til gistingar þinnar.\n\nVið erum að gera okkar best.', 3);
+    X('AB0271: Hótel þitt er HEATHROW RENAISSANCE LODGE. Ekki svara.');
+    A('Hvar ert þú? 🙂');
+    A('Við erum ófær um að staðsetja þig. Vinsamlegast deila staðsetningu þinni svo við getum hjálpað. 📍');
+    E('Við höfum verið ófær um að ná þér', 'Kæri Viðskiptavinur,\n\nVið höfum reynt að hafa samband við þig varðandi áframhaldandi flutning þinn og höfum verið ófær um að ná þér.\n\nÞað er ábyrgð viðskiptavinarins að haldast contactable.\n\nVið erum að gera okkar best.');
+    X('AB0271: Vinsamlegast staðfesta staðsetningu þína. Svara með herbergisnúmer þitt.');
+    X('AB0271: Vinsamlegast staðfesta staðsetningu þína.');
+    X('AB0271: Vinsamlegast staðfesta.');
+    A('Þú ert á Hótel Lind, herbergi 7.', 3);
+    A('Takk fyrir. 🙂');
+    E('Flutningur til gistingar þinnar — raðað', 'Kæri Viðskiptavinur,\n\nÖkutæki hefur verið raðað til að skila þér til gistingar þinnar.\n\nSöfnun: Hótel Lind, 04:30.\n\nMeðlimur starfsfólks mun banka.\n\nVið erum að gera okkar best.', 3);
+    X('AB0271: Ökutæki mun safna þér kl. 04:30 frá núverandi staðsetningu þinni. Vinsamlegast vera tilbúin.');
+    A('Flutningur þinn er staðfestur fyrir 04:30. Vinsamlegast haldast í herbergi þínu. 🚌');
+    ['Ert þú þægileg? 🙂', 'Vinsamlegast haldast þar sem þú ert.', 'Er það eitthvað annað? Það er ekkert annað.', 'Meirihluti viðskiptavina eru á gistingu þeirra.', 'Við getum séð að þú ert ennþá þar.', 'Vinsamlegast ekki gera frekari ráðstafanir.'].forEach((t) => A(t));
+    E('Mikilvægt: viðskiptavinir ekki á gistingu þeirra', 'Kæri Viðskiptavinur,\n\nViðskiptavinir sem eru ekki á raðaðri gistingu þeirra á tíma söfnunar gætu verið skráðir sem „mætti ekki“ og gætu ekki verið hýstir á endurbókaða þjónustu.\n\nÞetta er fyrir öryggi þitt.\n\nVið erum að gera okkar best.', 3);
+    X('AB0271: Viðskiptavinir ekki á gistingu þeirra gætu verið skráðir sem MÆTTI EKKI. Svara STOP til að afþakka.');
+    X('STOP is not a recognised command.');
+    E('Skilaboð frá yfirflugþjóni þínum', 'Kæri Viðskiptavinur,\n\nÉg er í forsvari fyrir þetta farrými, og öryggi viðskiptavina okkar er tantamount.\n\nÞú hefur gert aðrar ráðstafanir. Þær hafa verið skráðar.\n\nVið munum safna þér kl. 04:30.\n\nVið erum að gera okkar best.', 4);
+    ['AB0271: Vinsamlegast vera tilbúin.', 'AB0271: 04:30.', 'AB0271: Flutningur þinn er á tíma.', 'AB0271: Vinsamlegast halda áfram til hurðarinnar á raðaða tímanum.', 'AB0271: Við erum að gera okkar best.', 'AB0271: Do not reply.', 'AB0271: Vinsamlegast vera tilbúin.', 'AB0271: 04:30.'].forEach((t) => X(t));
+    A('Næstum þar. 🙂');
+    A('Vinsamlegast halda áfram til hurðarinnar kl. 04:30. Ekki opna hana fyrr. Ekki opna hana seinna.', 2);
+    E('Lokatilkynning', 'Kæri Viðskiptavinur,\n\nÞetta er lokatilkynning.\n\nVið erum að gera okkar best.', 3);
+    X('AB0271: Final notice.');
+    msgs.push({ ch: 'email', from: 'Albion Atlantic Customer Care', subj: 'Bíll þinn er að bíða', body: 'Kæri Viðskiptavinur,\n\nBíll hefur verið raðað til að skila þér til gistingar þinnar á Hótel Hraun.\n\nBílstjóri þinn er að bíða fyrir utan Hótel Lind. Vinsamlegast leita að Albion Atlantic skjaldarmerkinu.\n\nÁætlaður ferðatími: —:—', dd: 3, actions: [{ label: 'Fara niður til bílinn', if: (G) => G.has('lind') && !G.has('morning'), next: 'lind_car' }] });
+    A('Við vitum hvaða herbergi þú ert í. 🙂', 2);
+    // stamped across the dark hours, from the moment the phone died to now, so they all land at once
+    const t0 = G.S.deadAt != null ? G.S.deadAt : T(1, 2, 50), t1 = Math.max(t0 + msgs.length, G.t - 4);
+    msgs.forEach((m, k) => { const at = Math.floor(t0 + (t1 - t0) * (k + 1) / msgs.length); if (m.ch === 'chat') m.at = at; else m.stamp = at; G.S.backlog.push(m); });
+  }
+
+  scenes.lind_arrive = {
+    art: 'guesthouse',
+    loc: 'Hótel Lind · rétt við Laugaveg · Móttaka',
+    enter: (G) => { G.S.t = Math.max(G.t, T(1, 3, 5)); G.flag('at_hotel'); G.flag('lind'); atLeast(G, 34); },
+    text: (G) => p(
+      G.last(),
+      'Gistiheimili, þá. Þröngt, hlýtt, móttaka á stærð við skáp, og fyrir innan hana kona sem er vakandi, með kilju, og horfir á þig eins og fólk horfir á veðrið. Hún talar eins og flugfélagið gerir ekki: í heilum setningum, án nokkurs merkis á þeim.',
+      V(LX('„Ljósin hans Gunnars. Þá ertu úr fluginu.“')) + ' Flugfélagið hefur aldrei bókað hjá henni. Gunnar hefur komið með einn af ykkur til hennar á hverju kvöldi þessa viku. Það eru, einhvern veginn, bestu fréttir næturinnar. Hún á laust herbergi, númer 7, upp tvær hæðir, staðgreitt eða kort. Kortið virkar í fyrstu tilraun.',
+      'Nei, það er ekkert prentað skilti. Nei, enginn hefur hringt. ' + V(LX('„Vantar þig eitthvað? Tannkrem. Hleðslutæki – allir skilja eftir hleðslutæki. Það er brauð í eldhúsinu, og skyr. Spurðu bara. Ég er hér alla nóttina.“')),
+    ),
+    choices: [
+      { label: 'Já. Tannkrem, takk. Og hleðslutæki, ef eitthvert passar. Og hvað sem er til í eldhúsinu.', nd: -3, dd: 1, time: 8, do: (G) => { G.flag('lind_tp'); G.flag('charger'); G.flag('lind_food'); G.S.once.lind_desk_tp = true; G.S.once.lind_desk_ch = true; G.S.once.lind_desk_food = true; G.nerves(-4); G.dread(2); G.note('Hálfnuð túpa frá manni frá Düsseldorf, tannbursti enn í umbúðunum, bakki með brauði og skyri, og skúffan: tugir snúra, af öllum gerðum, bornar upp að símanum þínum ein af annarri eins og hjá tannlækni. Sú fjórða passar. ' + V(LX('„Eigðu hana. Allir skilja þær eftir.“')) + ' Þú ferð upp með fangið fullt, eins og manneskja sem hefur verið að versla.'); }, next: 'lind_room' },
+      { label: 'Bara herbergið, í bili.', time: 6, do: (G) => G.note('Þú segist ætla að hugsa málið. Þú hefur ekki hugmynd um hvers vegna þú sagðir það. Hún kinkar kolli eins og hún hafi heyrt þetta áður, snýr sér aftur að kiljunni og segir, án þess að líta upp, að hún sé hér alla nóttina.'), next: 'lind_room' },
+    ],
+  };
+
+  scenes.lind_room = {
+    art: 'street',
+    loc: 'Hótel Lind · Herbergi 7',
+    enter: (G) => {
+      G.flag('loc_lind_room');
+      if (G.t >= KNOCK_AT && !G.has('knocked')) { G.go('lind_knock'); return; }
+      if (G.t >= T(1, 6, 0)) { G.flag('allnighter'); G.go('lind_sleep'); return; }
+      if (G.once('lind_room_intro')) G.note(p(G.last(), 'Einbreitt rúm undir súð, ofn, hraðsuðuketill, gluggi sem snýr út að götu. Götu, með ljósastaur og kyrrstæðum bíl og, á meðan þú horfir, manneskju á leið heim. Þú stendur við gluggann lengur en þú ætlaðir þér. Þetta er fyrsti glugginn í alla nótt sem eitthvað er á bak við.'));
+    },
+    text: (G) => p(lindStatus(G) + (!G.has('charger') && !G.has('lind_tp') ? ' Móttakan er tveimur hæðum neðar. Hún sagði að þú skyldir bara spyrja.' : ''), G.last(), G.amb('lind_room', LIND_AMB.room)),
+    choices: (G) => [
+      { label: 'Setja símann í hleðslu.', if: (G) => G.has('charger') && G.dead(), time: 3, next: 'lind_charge' },
+      { label: 'Bursta tennurnar. Bursta þær í alvöru.', if: (G) => G.has('lind_tp') && !G.did('brush'), once: 'brush', time: 4, do: (G) => { G.nerves(-4); G.dread(-1); G.note('Tannkrem sem ókunnug manneskja frá Düsseldorf átti. Þú burstar í heilar tvær mínútur og horfir á spegilmynd þína á meðan, og í tvær mínútur ertu manneskja sem er að fara eitthvert á morgun.'); }, next: 'lind_room' },
+      { label: 'Borða brauðið og skyrið sem hún skildi eftir á bakkanum.', if: (G) => G.has('lind_food') && !G.has('lind_ate'), time: 8, do: (G) => { G.flag('lind_ate'); G.nerves(-8); G.note('Brauð, smjör, skyrdós með dagsetningu sem þú getur sætt þig við. Þú borðar á rúmbríkinni með bakkann á hnjánum. Þetta er næstbesta máltíðin sem þú hefur fengið í tuttugu klukkustundir, og sú eina.'); }, next: 'lind_room' },
+      { label: 'Fara í sturtu. Klæða sig aftur í sömu fötin.', whyNot: 'Þú gætir ekki staðið kyrr undir henni.', nerveMax: 95, time: 20, once: 'lind_shower', do: (G) => { G.nerves(-6); G.dread(-3); G.note('Heitt vatn sem lyktar dauft af eggjum og klárast aldrei. Þú stendur undir bununni þar til þú ert manneskja á ný, og svo ferðu aftur í flugvélina.'); }, next: 'lind_room' },
+      { label: 'Laga te með katlinum.', whyNot: 'Hendurnar myndu hella því niður.', nerveMax: 90, time: 8, once: 'lind_tea', do: (G) => { G.nerves(-5); G.dread(-2); G.note('Te, með alvöru mjólk úr könnu í sameiginlega ísskápnum, sem einhver hefur merkt með nafni og broskalli. Þú heldur um bollann með báðum höndum. Þetta er það fyrsta hlýja sem ekki hefur reynst lygi.'); }, next: 'lind_room' },
+      { label: 'Horfa út um gluggann, á götuna.', whyNot: 'Þú veist hvað er þarna úti núna.', dd: 2, dreadMax: 85, time: 3, do: (G) => { const d = G.D, n = G.count('lwin'); G.dread(2); G.nerves(d >= 4 ? 6 : 1); if (d >= 4) G.flag('looked_lind'); G.note(d >= 5 ? 'Rútan er komin í götuna, fyllir hana, speglarnir handarbreidd frá húsveggjunum beggja vegna. Kveikt á ljósunum inni. Allir inni snúa að gistiheimilinu, teinréttir, hreyfingarlausir. Og við dyrnar, með spenntar greipar, maður í dökkbláu, sem horfir upp í einn glugga. Þú sleppir gluggatjaldinu.' : d >= 4 ? 'Undir ljósastaurnum á móti, maður í dökkbláum einkennisbúningi, teinréttur, með spenntar greipar. Hann horfir ekki á gistiheimilið. Hann horfir á gluggann tveimur frá þínum. Svo einum frá.' : n === 1 ? 'Gata. Ljósastaur. Köttur á vegg, sem gerir ekki neitt, tignarlega. Þú gætir grátið yfir kettinum.' : 'Gatan. Ljósastaurinn. Bíll ekur hægt fram hjá með ljós á þakinu og stoppar ekki. Það er hljóðara en áður.'); }, next: 'lind_room' },
+      { label: 'Hlusta á húsið.', whyNot: 'Þú vilt ekki vita það.', nd: 3, dreadMax: 90, time: 4, do: (G) => { const d = G.D; G.dread(2); G.nerves(2); G.note(G.pick(d >= 4 ? ['Fótatak í stiganum. Jafnt. Þolinmótt. Nemur staðar á stigapallinum fyrir neðan þinn, og verður þar kyrrt.', 'Útidyrnar, tveimur hæðum neðar, sem hún læsti á miðnætti, opnast.', 'Bank. Ekki hér. Í næsta húsi. Svo í þessu, niðri. Svo nær.'] : ['Hrotur í gegnum einn vegg. Krani í gegnum annan. Hús fullt af fólki sem er að fara eitthvert á morgun.', 'Ketillinn í eldhúsinu, tveimur hæðum neðar, og einhver sem raular við hann.', 'Ekkert. Ofn. Borg, sofandi, sem er hljóð.'])); }, next: 'lind_room' },
+      { label: 'Reyna að sofa.', whyNot: 'Þú getur ekki legið kyrr.', nerveMax: 80, time: 25, do: (G) => { if (G.t + 25 >= T(1, 4, 5)) { G.S.t = Math.max(G.t, KNOCK_AT - 25); G.nerves(-2); G.dread(-1); G.note('Þú leggst út af í fötunum úr fluginu, með ljósið kveikt. Súðin hallar að þér. Þú ert næstum því, næstum því—'); } else { G.nerves(-4); G.dread(-3); G.note(G.pick(['Þú leggst út af. Almennilegt rúm, almennileg kyrrð. Líkaminn trúir engu af þessu og liggur þarna, viðbúinn.', 'Augun lokuð. Bíll fyrir neðan, hægir á sér, stoppar ekki. Þú sest aftur upp.', 'Þú skríður undir sængina í fötunum. Einhvers staðar ketill. Svefninn horfir á þig utan af götunni og kemur ekki inn.'])); } }, next: 'lind_room' },
+      { label: (!G.has('charger') || !G.has('lind_tp') || !G.has('lind_food')) ? 'Fara niður í móttökuna. Biðja um hluti.' : 'Fara niður í móttökuna.', time: 2, next: 'lind_lobby' },
+    ],
+  };
+
+  scenes.lind_lobby = {
+    art: 'guesthouse',
+    loc: 'Hótel Lind · Móttaka',
+    enter: (G) => {
+      G.flag('loc_lind_lobby');
+      if (G.t >= KNOCK_AT && !G.has('knocked')) { G.go('lind_lobby_knock'); return; }
+      if (G.t >= T(1, 6, 0)) { G.flag('allnighter'); G.go('lind_sleep'); return; }
+      if (G.once('lind_lobby_intro')) G.note(p(G.last(), 'Konan í móttökunni, kiljan, eldhús inn um dyr með ljósið kveikt, skúffa sem hún opnar án þess að vera beðin um það. Hún er full af snúrum. Tugum. Af öllum gerðum. Skildar eftir af hverjum einasta gesti sem hefur gist hér og farið heim.'));
+    },
+    text: (G) => p(`Móttakan. ${G.clock(G.t)}. Konan í móttökunni er enn vakandi. Útidyrnar eru læstar.`, G.last(), G.amb('lind_lobby', LIND_AMB.lobby)),
+    choices: (G) => [
+      { label: 'Spyrja hvort hún tali frönsku.', if: (G) => G.S.lang === 'fr' && !G.has('fr_asked'), time: 4, do: (G) => { G.flag('fr_asked'); G.nerves(-2); G.note(LX('„Smá. Tannkrem, hleðslutæki, eldhús. Sofa.“') + ' Hún sagði það hægt, og taldi atriðin á kiljunni.'); }, next: 'lind_lobby' },
+      { label: 'Biðja um tannkrem.', time: 4, once: 'lind_desk_tp', do: (G) => { G.flag('lind_tp'); G.nerves(-3); G.note('Hún teygir sig undir borðið og kemur upp með túpu, hálfnaða, frá gesti sem fór í flýti. ' + V(LX('„Düsseldorf,“')) + ' segir hún, til að gera grein fyrir upprunanum. Það er tannbursti líka, enn í umbúðunum.'); }, next: 'lind_lobby' },
+      { label: 'Biðja um hleðslutæki.', time: 4, once: 'lind_desk_ch', do: (G) => { G.flag('charger'); G.nerves(-2); G.dread(2); G.note('Skúffan. Hún rótar, heldur snúrum upp að símanum þínum eins og tannlæknir. Sú fjórða passar. ' + V(LX('„Eigðu hana. Allir skilja þær eftir.“')) + ' Þú heldur á henni andartak áður en þú stingur henni í vasann, eins og hún væri ákvörðun.'); }, next: 'lind_lobby' },
+      { label: 'Spyrja hvort eitthvað sé til að borða.', time: 5, once: 'lind_desk_food', do: (G) => { G.flag('lind_food'); G.nerves(-2); G.note('Hún fer inn í eldhúsið og kemur til baka með bakka: brauð, smjör, skyrdós. ' + V(LX('„Taktu þetta með þér upp. Morgunmatur er klukkan sjö. Almennilegur morgunmatur.“')) + ' Enginn hefur sagt orðið almennilegur við þig í heilan sólarhring.'); }, next: 'lind_lobby' },
+      { label: 'Spyrja hvernig komist er aftur út á flugvöll.', dd: -3, time: 6, once: 'lind_desk_bus', do: (G) => { G.flag('know_flybus'); G.nerves(-3); G.msg('paper', { from: 'Móttaka, Hótel Lind', subj: 'Flybus-spjald', body: '<b>FLYBUS → KEF AIRPORT</b>\n\nFrom BSÍ terminal (10 min walk)\n\n06:00 · 07:00 · 08:00 · 09:00 · 10:00 · every hour\n\n<b>TICKET REQUIRED</b> — buy at the kiosk or online\n\n45 minutes.' }); G.note('Hún bendir ekki bara á Ísland. Hún skrifar það á spjald: ' + V(LX('„Flybus. Frá BSÍ, þaðan sem þú komst. Tíu mínútur að ganga. Á klukkutíma fresti frá sex. Kauptu miðann fyrst; bílstjórinn tekur þig ekki með án hans.“')) + ' Hún horfir á þig. ' + V(LX('„Ekki hina. Þá gulu.“')) + ' Þú spurðir ekki um neina aðra.'); }, next: 'lind_lobby' },
+      { label: 'Spyrja hvort einhver hafi spurt eftir þér.', kind: 'comply', dd: 3, time: 4, do: (G) => { const n = G.count('lind_asked'); G.dread(1); G.note(G.t >= KNOCK_AT ? V(LX('„Maður í einkennisbúningi. Ég sagði honum að hér væri enginn með því nafni. Hann sagðist ætla að bíða.“')) + ' Hún horfir á dyrnar. ' + V(LX('„Ég læsti þeim.“')) : n === 1 ? V(LX('„Enginn. Enginn veit að þú ert hér.“')) + ' Hún segir það til huggunar, og það er huggun, í svona eina sekúndu.' : V(LX('„Ennþá enginn,“')) + ' segir hún, áður en þú hefur lokið við spurninguna, og lítur ekki upp, og gerir það svo.'); }, next: 'lind_lobby' },
+      { label: 'Setjast inn í eldhús með hverjum þeim sem er vakandi.', whyNot: 'Þú myndir hreyta í ókunnuga manneskju.', nd: -4, dd: -2, nerveMax: 85, time: 10, once: 'lind_kitchen', do: (G) => { G.nerves(-3); G.dread(G.D >= 3 ? 3 : -1); G.note(G.D >= 3 ? 'Maður í hreinni skyrtu, að borða ristað brauð klukkan tvö að nóttu eins og það sé eðlilegur tími. ' + V('„Albion?“') + ' segir hann, glaðlega. ' + V('„Þriðjudagsflugið. Við bíðum eftir flutningnum. Hann er staðfestur.“') + ' Hann sýnir þér símann sinn. ' + ALLY(G) + ' hefur staðfest það. Það staðfestir það á hverjum morgni.' : 'Tveir bakpokaferðalangar, að skipuleggja jökul. Þau gefa þér kex og spyrja um flugið og segja ' + V('„þetta er geðveikt“') + ' á hverju réttu augnabliki. Í tíu mínútur líður þér eins og sögu sem einhver annar er að segja.'); }, next: 'lind_lobby' },
+      { label: 'Biðja hana um að hringja í Gunnar. Fara þrátt fyrir allt á hitt hótelið. Það rétta.', kind: 'comply', dd: 4, sub: 'Fjörutíu mínútur. Fargjaldið aftur.', if: (G) => G.t < T(1, 5, 30), time: 6, do: (G) => G.note(V(LX('„Hraun? Ertu viss?“')) + ' Hún hringir samt í hann, segir herbergisnúmerið þitt í símann eins og það væri lykilorð, snýr sér aftur að kiljunni og lítur ekki á þig aftur fyrr en bílljósin koma.'), next: 'lind_taxi_back' },
+      { label: 'Biðja hana um að opna dyrnar. Fara út að viðra sig.', whyNot: 'Gatan er röng leið.', dreadMax: 85, dd: -2, time: 3, do: (G) => G.note('Hún opnar orðalaust og læsir aftur á eftir þér, og stendur við rúðuna með kiljuna og fylgist með, eins og maður fylgist með barni úti í garði.'), next: 'lind_street' },
+      { label: 'Aftur upp í herbergi 7.', time: 2, next: 'lind_room' },
+    ],
+  };
+
+  /* ---- the street outside Lind (hub) ---- */
+  scenes.lind_street = {
+    art: 'street',
+    loc: 'Laugavegur · fyrir utan Hótel Lind',
+    enter: (G) => {
+      G.dread(1);
+      if (G.t >= KNOCK_AT && !G.has('knocked')) { G.go('lind_lobby_knock'); return; }
+      if (G.t >= T(1, 6, 0)) { G.flag('allnighter'); G.go('lind_sleep'); return; }
+      if (G.once('lind_street_intro')) G.note(p(G.last(), 'Gata. Kalt, en borgarkuldi, með veggjum í. Lokaðir barir, bakarí með slökkt ljós og lyktina enn í loftinu, ljósastaur, kyrrstæðir bílar með frosti á. Enginn. Svo, úti við endann, einhver, á leið í hina áttina, ekkert að flýta sér, sem virðist ósvífið mikil heppni.'));
+    },
+    text: (G) => p(`Gatan. ${G.clock(G.t)}. Dyrnar fyrir aftan þig eru læstar, og hún er fyrir innan þær.` + (G.has('lind_car') ? ' Við gangstéttarbrúnina, með vélina í gangi, svartur bíll með lítið gyllt skjaldarmerki á hurðinni, sá úr tölvupóstinum.' : ''), G.last(), G.amb('lind_street', LIND_AMB.street)),
+    choices: (G) => [
+      { label: 'Ganga út á horn. Horfa niður brekkuna.', whyNot: 'Fæturnir neita.', nd: 3, dreadMax: 90, time: 6, do: (G) => { const d = G.D; G.dread(d >= 4 ? 3 : 1); G.nerves(d >= 4 ? 5 : 2); if (d >= 4) G.flag('coach_seen_street'); G.note(d >= 5 ? 'Niðri í brekkunni, þar sem gatan víkkar í átt að höfninni, stendur rúta þversum yfir endann á henni, dökkblá, gyllt skjaldarmerki, kveikt á hverju einasta ljósi inni. Það er engin leið fram hjá henni nema í gegnum hana. Maður við dyrnar á henni, með spenntar greipar, horfir upp brekkuna, á þig, eins og þú værir of seint á ferð.' : d >= 4 ? 'Niðri í brekkunni, þar sem gatan víkkar, eitthvað langt og dökkt með vélina í gangi, og ræma af hlýju ljósi eftir hliðinni sem er gluggar. Það er of stórt fyrir götuna. Það er í götunni samt.' : 'Niðri í brekkunni opnast gatan í átt að höfninni, og höfnin er dekkra myrkur með ljósum hinum megin. Leigubíll ekur þvert yfir brekkufótinn með skiltið upplýst, á leið eitthvert annað.'); }, next: 'lind_street' },
+      { label: 'Ganga niður að henni.', kind: 'comply', if: (G) => G.has('coach_seen_street'), do: (G) => { G.flag('nc_lind'); G.end('nightcoach'); } },
+      { label: 'Bíllinn við gangstéttarbrúnina. Setjast inn.', kind: 'comply', if: (G) => G.has('lind_car'), sub: 'Nafnið þitt er á spjaldtölvunni.', do: (G) => G.end('accommodated') },
+      { label: 'Líta upp að glugganum þínum.', time: 3, do: (G) => { G.dread(1); G.nerves(1); G.note(G.D >= 4 ? 'Önnur hæð, litli glugginn undir súðinni. Ljósið logar. Þú skildir það eftir kveikt. Gluggatjaldið er dregið frá. Þú skildir það ekki eftir dregið frá.' : 'Önnur hæð, litli glugginn undir súðinni. Ljósið logar. Héðan að neðan lítur þetta út eins og herbergi sem einhver er óhultur í.'); }, next: 'lind_street' },
+      { label: 'Standa undir ljósastaurnum og anda.', nd: -3, dd: 1, time: 5, once: 'lind_breathe', do: (G) => { G.nerves(-4); G.dread(1); G.note('Kalt loft, almennilega kalt, og himinn með einni stjörnu í sem er sennilega flugvél. Í eina mínútu ertu manneskja sem stendur á götu í borg, og ekkert á von á þér neins staðar.'); }, next: 'lind_street' },
+      { label: 'Banka á rúðuna. Fara aftur inn.', time: 2, next: 'lind_lobby' },
+    ],
+  };
+
+  scenes.lind_charge = {
+    art: 'phone',
+    loc: (G) => `Hótel Lind · Herbergi 7 · ${G.clock(G.t)}`,
+    enter: (G) => { G.flag('charged'); G.flag('lind_car'); if (G.once('flood')) lindFlood(G); G.S.floodN = G.charge(100); },
+    text: (G) => p(
+      'Snúran. Innstungan við rúmið. Litla eldingin, og skjárinn sem kviknar grár, og klukkan, sem hefur haldið áfram án þín.',
+      'Svo byrjar það. Titringur, og titringur, og titringur, og skjárinn fyllist ofan frá og niður af öllu sem þeir sendu á meðan þú varst í myrkri: póstur, smáskilaboð, spjall, póstur, póstur, smáskilaboð, tala sem hækkar í rauðum hring eins og hiti. Það hættir ekki. Þú leggur hann á rúmið og hann mjakast yfir sængina, titrandi, nokkra millimetra í einu, í átt að þér.',
+      `${G.S.floodN || 0} tilkynningar. Sú síðasta er fjögurra mínútna gömul. Þar stendur að þeir viti í hvaða herbergi þú ert.`,
+    ),
+    choices: [
+      { label: 'Lesa þær. Allar.', kind: 'comply', dd: 2, time: 10, do: (G) => { G.openPhone('email'); G.note('Þú lest þær. Allar.'); }, next: 'lind_room' },
+      { label: 'Leggja hann á grúfu. Láta hann hlaðast. Ekki lesa þær.', whyNot: 'Þú getur ekki látið vera að líta.', dreadMax: 80, nd: 4, time: 5, do: (G) => { G.note('Þú leggur hann á grúfu á gólfið við innstunguna, þar sem hann heldur áfram að titra, dempað, eins og eitthvað undir kodda.'); }, next: 'lind_room' },
+      { label: 'Taka snúruna úr sambandi. Láta hann vera dauðan.', whyNot: 'Nafnið þitt er komið í hann núna.', dreadMax: 70, dd: -4, time: 2, do: (G) => { G.S.phoneDead = true; G.S.batt = 0; G.flag('unplugged'); G.nerves(5); G.note('Þú tekur snúruna úr sambandi. Skjárinn helst í eina sekúndu, með rauðu töluna á sér, og slokknar. Þögnin á eftir er það besta í herberginu, og þú treystir henni ekki.'); }, next: 'lind_room' },
+    ],
+  };
+
+  scenes.lind_car = {
+    art: 'street',
+    loc: 'Laugavegur · fyrir utan Hótel Lind',
+    text: (G) => p(
+      'Konan í móttökunni opnar dyrnar fyrir þér orðalaust. Við gangstéttarbrúnina, þar sem ekkert var, stendur bíll: svartur, langur, gljáfægður, með lítið gyllt skjaldarmerki á hurðinni, vélin í gangi, útblásturinn stendur í kuldanum eins og andardráttur. Bílstjórinn heldur á spjaldtölvu með nafninu þínu á – rétt stafsettu.',
+      V('„Á Hótel Hraun?“'),
+      'Hann opnar afturhurðina. Hlýtt loft. Leður. Fyrir aftan þig, í gegnum glerið, stendur konan í móttökunni með kiljuna upp að brjóstinu, og hún hristir höfuðið, hægt, einu sinni.',
+    ),
+    choices: [
+      { label: 'Setjast inn. Þetta er, þegar allt kemur til alls, rétta hótelið.', kind: 'comply', sub: 'Hlýtt.', do: (G) => G.end('accommodated') },
+      { label: 'Nei. Nei, takk.', whyNot: 'Hann er með nafnið þitt.', dd: 5, dreadMax: 85, time: 4, do: (G) => { G.nerves(5); G.dread(8); G.note('Bílstjórinn virtist ekki hissa. Hann lokaði hurðinni, stóð kyrr þar sem hann var, og stóð þar enn þegar konan í móttökunni læsti dyrunum á eftir þér og sneri lyklinum tvisvar.'); }, next: 'lind_lobby' },
+    ],
+  };
+
+  scenes.lind_taxi_back = {
+    art: 'road',
+    loc: 'Leigubíllinn hans Gunnars · Reykjanesbraut · á leið út úr bænum',
+    enter: (G) => { G.flag('left_lind'); G.flag('lind', false); G.S.t = Math.max(G.t + 40, T(1, 4, 10)); G.dread(6); G.nerves(4); },
+    text: (G) => p(
+      'Gunnar, aftur, með lágt stillt útvarp. Hann spyr ekki hvers vegna. ' + V(LX('„Hraun. Já. Allir fara þangað á endanum.“')) + ' Hann hljómar ekki eins og hann sé sáttur við það. Hann hljómar heldur ekki eins og hann myndi neita.',
+      'Borgin endar. Hraun, undir lágum himni, vegur með einni hvítri línu sem hverfur í sífellu. Tvisvar koma bílljós upp fyrir aftan og halda sig þar, nákvæmlega nógu langt frá, og svo eru þau horfin, og það er verra.',
+      'Við lágreista, víðáttumikla hótelið sem er upplýst eins og fiskabúr tekur hann fargjaldið á kortið og segir ' + V(LX('„Gangi þér vel,“')) + ' og bíður, með ljósin kveikt, þar til þú ert innan dyra.',
+    ),
+    choices: [{ label: 'Fara inn.', time: 3, next: 'hotel_arrive' }],
+  };
+
+  scenes.lind_knock = {
+    art: 'street',
+    loc: (G) => `Hótel Lind · Herbergi 7 · ${G.clock(G.t)}`,
+    enter: (G) => { G.flag('knocked'); atLeast(G, 62); },
+    text: (G) => p(
+      G.last(),
+      'Einhver bankar. Tveimur hæðum ofar í læstu húsi, á hurð herbergis sem enginn bókaði þig í. Jafnt og þétt, eins og sá bankar sem ætlar að banka alla nóttina.',
+      V('„Flutningur til gistingar þinnar. Albion Atlantic. Fer núna.“'),
+      'Röddin er þolinmóð. Röddin veit herbergisnúmerið. Röddin segir það, ef þú skyldir hafa gleymt því: ' + V('„Sjö.“'),
+    ),
+    choices: [
+      { label: 'Opna dyrnar.', kind: 'comply', sub: 'Þetta er, þegar allt kemur til alls, flutningurinn þinn.', do: (G) => { G.flag('nc_lind'); G.end('nightcoach'); } },
+      { label: 'Ekki gera það. Hún sagði að enginn hefði spurt. Hún læsti dyrunum.', whyNot: 'Þú getur ekki ekki svarað.', nd: 5, dreadMax: 80, time: 20, do: (G) => { G.nerves(5); G.note('Þú sast á rúminu með bakið upp að veggnum og taldir. Þú misstir töluna við fimmtíu. Þegar það hætti heyrðist enginn fara niður stigann.'); }, next: 'lind_window' },
+      { label: 'Kíkja út um gægjugatið.', dd: 6, nd: 6, time: 2, do: (G) => { G.nerves(9); G.flag('spyhole'); G.note('Stigapallurinn er auður. Gólfborðin fyrir utan hurðina þína eru dökk, eins og þau séu blaut, í húsi með viðargólfum. Bankið heldur áfram, jafnt og þétt, úr engri sérstakri átt.'); }, next: 'lind_knock2' },
+      { label: 'Taka upp herbergissímann. Spyrja hana hverjum hún hleypti inn.', whyNot: 'Höndin á þér myndi ekki halda honum.', nd: 4, nerveMax: 85, time: 4, do: (G) => { G.nerves(4); G.dread(4); G.note('Það hringir einu sinni. ' + V(LX('„Sjö? Já. Enginn. Ég læsti dyrunum á miðnætti, ég hef setið hér, enginn hefur komið inn.“')) + ' Þögn, þar sem þið heyrið bæði bankið, í gegnum símann og í gegnum hurðina. ' + V(LX('„Ekki opna. Ég kem upp.“')) + ' Þú heyrir hana í stiganum. Bankið hættir ekki fyrir hana. Svo hættir það, og hún stendur fyrir utan hurðina þína, ein, og segir herbergisnúmerið þitt lágt, og það er alls enginn annar á stigapallinum.'); }, next: 'lind_window' },
+    ],
+  };
+
+  scenes.lind_knock2 = {
+    art: 'street',
+    loc: (G) => `Hótel Lind · Herbergi 7 · ${G.clock(G.t)}`,
+    text: (G) => p(G.last(), 'Jafnt og þétt. Þolinmótt. Enginn þarna.'),
+    choices: [
+      { label: 'Opna dyrnar samt.', kind: 'comply', do: (G) => { G.flag('nc_lind'); G.end('nightcoach'); } },
+      { label: 'Hörfa frá hurðinni. Setjast á rúmið. Bíða þetta af sér.', whyNot: 'Höndin á þér er þegar komin á hurðarhúninn.', dreadMax: 88, time: 25, do: (G) => { G.nerves(3); G.note('Það hætti, á endanum, eins og rigning hættir: þú tókst ekki eftir síðasta bankinu. Það heyrðist enginn fara niður stigann.'); }, next: 'lind_window' },
+    ],
+  };
+
+  scenes.lind_lobby_knock = {
+    art: 'guesthouse',
+    loc: (G) => `Hótel Lind · Móttaka · ${G.clock(G.t)}`,
+    enter: (G) => { G.flag('knocked'); atLeast(G, 62); G.nerves(6); },
+    text: (G) => p(
+      G.last(),
+      'Þú ert í móttökunni þegar það byrjar. Uppi. Tveimur hæðum ofar. Bank, jafnt og þolinmótt, á hurð, og konan í móttökunni lítur upp í loftið, og svo á útidyrnar, sem eru læstar, og svo á þig.',
+      V(LX('„Það er sjö,“')) + ' segir hún. ' + V(LX('„Enginn kom inn.“')),
+      'Ofan af stigapallinum, berst niður stigaganginn, viðkunnanlega: ' + V('„Flutningur til gistingar þinnar. Fer núna.“'),
+    ),
+    choices: [
+      { label: 'Fara upp. Þú ert farþegi hjá Albion Atlantic.', kind: 'comply', do: (G) => { G.flag('nc_lind'); G.end('nightcoach'); } },
+      { label: 'Vera hér niðri. Hjá henni. Með ljósið kveikt.', whyNot: 'Þú getur ekki hreyft þig.', dd: 5, dreadMax: 92, time: 20, do: (G) => { G.nerves(4); G.dread(5); G.flag('hid_lobby'); G.note('Þú sast í stiganum með bakið upp að veggnum og hún sat bak við borðið, og hvorugt ykkar sagði neitt, og eftir nokkra stund hætti bankið, og enginn kom niður.'); }, next: 'lind_window' },
+    ],
+  };
+
+  scenes.lind_window = {
+    art: 'street',
+    loc: (G) => `Hótel Lind · Herbergi 7 · ${G.clock(G.t)}`,
+    enter: (G) => { G.S.t = Math.max(G.t, T(1, 4, 50)); if (!G.dead()) G.bot('Hæ! Ég sé þú ert í herbergi 7. Flutningur þinn er að bíða í götunni. Vinsamlegast ekki horfa út af glugganum. 🙂', 2); },
+    text: (G) => p(
+      G.last(),
+      G.has('hid_lobby') ? 'Þú fórst aftur upp, á endanum. Stigapallurinn var auður. Bankið er hætt.' : 'Bankið er hætt.',
+      G.dead() ? 'Síminn liggur dimmur á gólfinu við innstunguna, og það er næstum verra: hvað sem þeir eru að segja, þá segja þeir það við engan.' : 'Síminn lýsir upp súðina. Skilaboð frá Ally. ' + W('Flutningur þinn er að bíða í götunni. Vinsamlegast ekki horfa út af glugganum.'),
+      'Gluggatjaldið er þunnt. Það berst ljós í gegnum það neðan frá, og ljósið bærist örlítið, eins og ljós frá vél í gangi gerir, í götu sem er of þröng fyrir það sem vélin gengur í.',
+    ),
+    choices: [
+      { label: 'Kíkja.', whyNot: 'Þeir sögðu að gera það ekki.', dd: 10, nd: 8, dreadMax: 90, sub: 'Bara rétt aðeins.', time: 5, do: (G) => { G.flag('seen'); G.flag('seen_lind'); G.flag('looked_out'); G.nerves(14); atLeast(G, 78); G.note('Rúta, dökkblá, með gylltu skjaldarmerki, fyllir götuna vegg í vegg. Vélin í gangi. Kveikt á hverju einasta ljósi inni. Allir inni sitja þráðbeinir og snúa að gistiheimilinu. Við dyrnar, maður í einkennisbúningi yfirflugþjóns, sem horfir upp – ekki á húsið. Á gluggann þinn. Hann veifar ekki. Hann hefur skráð það.'); }, next: 'lind_sleep' },
+      { label: 'Ekki gera það. Draga sængina upp yfir höfuð.', kind: 'comply', dd: 6, time: 5, do: (G) => G.nerves(2), next: 'lind_sleep' },
+    ],
+  };
+
+  scenes.lind_sleep = {
+    art: 'guesthouse',
+    loc: 'Hótel Lind · Morgunverðarsalur',
+    enter: (G) => {
+      G.S.t = T(1, 7, 30); G.flag('morning');
+      G.S.dread = Math.max(20, G.S.dread - 25);
+      G.nerves(G.has('allnighter') ? 6 : -10);
+      if (G.has('lind_tp')) G.nerves(-4);
+      if (G.dead()) { G.flag('lind_morning_cable'); if (G.once('flood')) lindFlood(G); G.charge(100); }
+      G.at(T(1, 7, 35), 'sms', { from: 'Jo 💛', body: 'OMG ERTU Á ÍSLANDI?? þú VERÐUR að fara í bláa lónið. VERÐUR. það er svona 20 mín frá flugvellinum' });
+      G.at(T(1, 8, 5), 'chat', { body: 'Góðan morgun! Flutningur þinn frá Hótel Lind til flugvöllinn er staðfestur fyrir 09:00. Vinsamlegast bíða í lobbýinu. 🚌', dd: 1 });
+      G.at(T(1, 9, 40), 'email', { from: 'Albion Atlantic Customer Care', subj: 'Flutningur þinn til flugvöllinn', stamp: T(1, 9, 40), body: 'Kæri Viðskiptavinur,\n\nRútur munu safna þér frá gistingu þinni kl. 09:00 fyrir endurbókað flug þitt AB 0271.\n\nVinsamlegast vera tilbúin í lobbýinu kl. 08:45.\n\nVið erum að gera okkar best.', dd: 2 });
+      G.at(T(1, 9, 55), 'chat', { body: 'Flutningur þinn er hér. Það er sú fína. 🚌', dd: 1 });
+    },
+    text: (G) => p(
+      G.has('allnighter') ? 'Grá birta. 07:30. Þú svafst ekki, og þú ert enn á Íslandi, á gistiheimili sem flugfélagið bókaði aldrei.' : 'Grá birta. 07:30. Þú svafst, eða eitthvað í þá áttina, í rúmi sem enginn ráðstafaði, og þú ert enn á Íslandi.',
+      'Morgunmaturinn er brauð, skyr, egg og kaffi sem einhverjum var alvara með. Tveir bakpokaferðalangar eru að skipuleggja jökul. Og við langborðið við gluggann, átta manna hópur í hreinum skyrtum og hreinum sokkum, sem horfir á símana sína og kinkar kolli til þeirra.',
+      V('„Albion?“') + ' segir einn þeirra, glaðlega, þegar hann sér fötin þín. ' + V('„Þriðjudagsflugið. Og fimmtudags, þessi tvö. Við bíðum eftir flutningnum. Hann er staðfestur.“') + ' Hann snýr símanum að þér. ' + ALLY(G) + ' hefur staðfest það. Það hefur staðfest það á hverjum morgni. Enginn við borðið hefur litið á brottfarartöfluna.',
+      G.has('lind_morning_cable') && 'Konan í móttökunni leggur, óbeðin, snúru á borðið við diskinn þinn. Síminn kemur til baka, og það fyrsta sem hann gerir er að segja þér allt sem þú misstir af.',
+    ),
+    choices: [{ label: 'Fá sér samt kaffi.', time: 10, next: 'lind_morning' }],
+  };
+
+  scenes.lind_morning = {
+    art: 'guesthouse',
+    loc: 'Hótel Lind · Morgunverðarsalur',
+    enter: (G) => {
+      if (G.t >= T(1, 10, 15) && !G.has('lind_decoy')) { G.go('lind_decoy'); return; }
+      if (G.once('lind_morn_intro')) G.note(p(G.last(), 'Albion-borðið hefur sinn takt: sími, kinka kolli, kaffi, sími. Enginn er með tösku. Enginn er með áætlun út fyrir flutninginn. Konan í móttökunni fyllir á skyrið eins og maður gefur einhverju að éta sem maður hefur ákveðið að eiga.'));
+    },
+    text: (G) => p(
+      `Morgunverðarsalurinn. ${G.clock(G.t)}. ${G.t >= T(1, 9, 45) ? 'Í tölvupóstinum stóð 09:00 og hann barst 09:40. ' : G.t >= T(1, 8, 5) ? 'Spjallmennið sagði 09:00, frá hóteli sem það bókaði aldrei. ' : ''}${G.has('know_flybus') ? 'Á spjaldinu stendur að Flybus fari á klukkutíma fresti frá BSÍ.' : 'Enginn hér hefur minnst á rútu.'}`,
+      G.last(), G.amb('lind_morning', LIND_AMB.morning)),
+    choices: (G) => [
+      { label: 'Spyrja í móttökunni hvernig komist er aftur út á flugvöll.', dd: -3, time: 6, if: (G) => !G.has('know_flybus'), do: (G) => { G.flag('know_flybus'); G.nerves(-3); G.msg('paper', { from: 'Móttaka, Hótel Lind', subj: 'Flybus-spjald', body: '<b>FLYBUS → KEF AIRPORT</b>\n\nFrom BSÍ terminal (10 min walk)\n\n06:00 · 07:00 · 08:00 · 09:00 · 10:00 · every hour\n\n<b>TICKET REQUIRED</b> — buy at the kiosk or online\n\n45 minutes.' }); G.note('Hún skrifar það á spjald. ' + V(LX('„Flybus. Frá BSÍ, þaðan sem þú komst. Tíu mínútur að ganga. Á klukkutíma fresti. Kauptu miðann fyrst.“')) + ' Hún lítur sem snöggvast á langborðið. ' + V(LX('„Þá gulu. Ekki hina.“'))); }, next: 'lind_morning' },
+      { label: 'Tala við þriðjudagsfarþegana.', whyNot: 'Þú myndir hefja rifrildi.', nd: -3, dd: 2, nerveMax: 85, time: 12, once: 'lind_tuesday', do: (G) => { G.nerves(-2); G.dread(3); G.note('Þau eru yndisleg. Þau eru úthvíld. Þau hafa verið úthvíld síðan á þriðjudag. ' + V('„Hann er staðfestur klukkan níu,“') + ' segir kona með mjög hreinan kraga. ' + V('„Hann var staðfestur klukkan níu í gær. Flugfélagið er að gera sitt besta.“') + ' Þú spyrð hvort einhverjum hafi dottið í hug að taka bara Flybus. Þau horfa á þig eins og fólk horfir á einhvern sem hefur stungið upp á að ganga til Ameríku.'); }, next: 'lind_morning' },
+      { label: 'Fara aftur upp. Fara í sturtu. Þvo þér að minnsta kosti í framan.', whyNot: 'Þú gætir ekki staðið kyrr undir henni.', nerveMax: 92, time: 25, once: 'lind_morn_shower', do: (G) => { G.nerves(-5); G.dread(-2); G.note('Heitt vatn. Sömu fötin. Í dagsbirtu er herbergið notalegt herbergi á notalegu gistiheimili, og gatan fyrir utan er gata, með bakaríi, og engu lagt þar sem ekki ætti að vera þar.'); }, next: 'lind_morning' },
+      { label: 'Athuga stöðu flugsins á vef flugfélagsins.', dd: 3, nd: 3, time: 8, if: (G) => !G.dead(), do: (G) => { const n = G.count('status'); G.dread(2); G.batt(-1); G.note(n === 1 ? 'AB 0271 · KEF → LAX · 15:10 · Á ÁÆTLUN. Fyrir neðan, með smærra letri: FLUTNINGUR ÞINN ER STAÐFESTUR.' : 'AB 0271 · 15:10 · Á ÁÆTLUN. Síðan veit á hvaða hóteli þú ert. Það vissi hún ekki í gær.'); }, next: 'lind_morning' },
+      { label: 'Fara í heitu laugarnar. Þig hefur alltaf langað til þess.', sub: 'Það eru tuttugu mínútur út á flugvöll. Allir segja það.', do: (G) => G.end('tantalus') },
+      { label: 'Bíða eftir flutningnum í anddyrinu. Hann er staðfestur.', kind: 'comply', dd: 5, nd: 2, sub: 'Hálftíma af því.', time: 30, do: (G) => { G.nerves(2); G.dread(3); G.note(G.pick(['Hálftími. Albion-borðið hreyfir sig ekki. Einn þeirra sækir sér kaffi og kemur aftur í sama stólinn, eins og honum hafi verið úthlutað.', 'Hálftími. Fyrir utan ekur gul rúta fram hjá götuendanum, og enginn við langborðið snýr höfðinu.', 'Hálftími. Hver einasti sími við langborðið segir, í einu, að flutningurinn sé á leiðinni, og allt borðið brosir í einu.'])); }, next: 'lind_morning' },
+      { label: 'Ganga á BSÍ. Tíu mínútur. Kaupa miða í þá gulu.', if: (G) => G.has('know_flybus'), dd: -2, time: 12, next: 'lind_buses' },
+      { label: 'Ganga aftur á umferðarmiðstöðina og sjá hvað er þar.', if: (G) => !G.has('know_flybus'), time: 12, next: 'lind_buses' },
+    ],
+  };
+
+  scenes.lind_decoy = {
+    art: 'street',
+    loc: 'Hótel Lind · gatan fyrir utan',
+    enter: (G) => { G.flag('lind_decoy'); G.dread(4); },
+    text: (G) => p(
+      'Einhver við langborðið segir: ' + V('„Hann er kominn.“') + ' Átta manns standa upp í einu, eins og söfnuður.',
+      'Fyrir utan: rúta, dökkblá, gyllt skjaldarmerki, fyllir götuna vegg í vegg, á LED-skiltinu stendur TRANSFER · ALBION ATLANTIC · CONFIRMED. Yfirflugþjónninn stendur við dyrnar með spenntar greipar, og þegar hann sér þig brosir hann eins og þú sért nákvæmlega á réttum tíma, sem þú ert, í fyrsta sinn í tvo daga.',
+      'Þriðjudagsfarþegarnir ganga í röð fram hjá þér og upp tröppurnar, og setjast, og snúa að gistiheimilinu, og eru hreyfingarlausir. Konan í móttökunni stendur í dyragættinni með kiljuna upp að brjóstinu. Hún veifar ekki.',
+    ),
+    choices: [
+      { label: 'Fara um borð. Hann er staðfestur. Allir segja það.', kind: 'comply', do: (G) => G.end('arrangements') },
+      { label: 'Ganga í hina áttina. Í átt að BSÍ. Ekki líta um öxl á hana.', whyNot: 'Hann horfir á þig.', dreadMax: 85, time: 12, do: (G) => { G.nerves(8); G.dread(4); G.note('Þú gekkst. Enginn stöðvaði þig. Fyrir aftan þig stóð rútan kyrr með opnar dyr í langan tíma, og svo var gatan bara gata, og þú á henni, upp á eigin spýtur, með stefnu.'); }, next: 'lind_buses' },
+    ],
+  };
+
+  scenes.lind_buses = {
+    art: 'bsi',
+    loc: 'Reykjavík · Umferðarmiðstöðin BSÍ · morgunn',
+    enter: (G) => { G.flag('left_hotel'); G.dread(2); if (G.t < T(1, 8, 0)) G.S.t = T(1, 8, 0); },
+    text: (G) => p(
+      'BSÍ í dagsbirtu er umferðarmiðstöð: söluturn sem selur miða og kanil, tafla sem virkar, bakpokaferðalangar sem vita hvert þeir eru að fara. Þú gætir verið í þeirra hópi. Þú ert í flugvélinni.',
+      G.has('know_flybus') ? 'Söluturninn selur þér miða í fyrstu tilraun. Kortið er farið að venjast þessu.' : 'Þú ert ekki með miða. Þú ert ekki viss hver þessara þarf miða.',
+      'Fyrir utan: rútur. Á engri þeirra stendur flugnúmerið þitt, nema þeirri sem það stendur á, gylltu letri.',
+      G.has('know_flybus') && W(LX('„Þá gulu. Ekki hina.“')),
+    ),
+    buses: (G) => {
+      const flybus = {
+        key: 'city',
+        art: { livery: '#cfae36', windows: 'dim', passengers: 'luggage', sign: 'print', driver: 'plain', ground: 'day' },
+        name: 'Gulur strætisvagn með merkjum borgarinnar',
+        sign: 'FLYBUS · KEF AIRPORT', signStyle: 'print',
+        look: ['Bílstjóri, leiður, skannar miða af símum.', 'Farþegar með bakpoka og töskur á hjólum, og einn með enga tösku, í skyrtunni frá því í gær, sem kinkar kolli til þín.'],
+        hidden: ['Límmiði við dyrnar: MIÐASKYLDA. Bílstjóranum er alvara.', 'Enginn um borð bíður eftir neinu. Þau eru á leið út á flugvöll, sem er öll hugmyndin.'],
+        boardLabel: G.has('know_flybus') ? 'Fara um borð' : 'Fara um borð án miða',
+        board: { time: 10, do: (G) => { G.flag('bus2_ok'); if (!G.has('know_flybus')) { G.nerves(6); G.S.t += 20; G.note('Bílstjórinn bendir á söluturninn án þess að líta upp. Þú kaupir miða. Þú hleypur. Hann bíður, með naumindum.'); } }, next: 'ride3' },
+      };
+      const crest = {
+        key: 'crest',
+        art: { livery: '#1b2a4a', stripe: '#c9a227', windows: 'warm', passengers: 'upright', sign: 'led', driver: 'purser', ground: 'day' },
+        name: 'Dökkblá rúta með gylltu skjaldarmerki, í ysta stæðinu, eins og hún hafi aldrei farið',
+        sign: 'AIRPORT TRANSFER · ALBION ATLANTIC', signStyle: 'led',
+        look: ['Yfirflugþjónninn við dyrnar. Hann veit hvaða gluggi var þinn.', 'Hlýtt. Hljótt. Nóg pláss.'],
+        hidden: ['Enginn um borð lítur út fyrir að hafa sofið í fötunum. Enginn lítur út fyrir að hafa sofið.', 'Enginn um borð er með síma uppi.'],
+        board: { kind: 'comply', do: (G) => G.end('crew') },
+      };
+      const lagoon = {
+        key: 'lagoon',
+        art: { livery: '#3e9c9a', windows: 'cold', passengers: 'few', sign: 'print', driver: 'plain', ground: 'day' },
+        name: 'Túrkísblá smárúta',
+        sign: 'BLUE LAGOON SHUTTLE — Relax. You deserve it.', signStyle: 'print',
+        look: ['Bílstjóri með stafla af hvítum handklæðum.', 'Lyktar af brennisteini og tröllatré.'],
+        hidden: ['Allir um borð eru í hreinum sokkum.', 'Hún fer eftir tvær mínútur. Hún fer alltaf eftir tvær mínútur.'],
+        board: { do: (G) => G.end('tantalus') },
+      };
+      return G.shuffle([flybus, crest, lagoon]);
+    },
+    choices: [
+      { label: 'Bíða eftir þeirri næstu. Það kemur alltaf önnur.', kind: 'comply', dd: 5, nd: 4, time: 60, next: (G) => (G.t >= T(1, 12, 30) ? 'end:arrangements' : 'lind_buses'), do: (G) => { G.nerves(5); G.dread(4); } },
+    ],
+  };
+
+  scenes.ride3 = {
+    art: 'road',
+    loc: 'Leið 41 · í átt að Keflavík',
+    enter: (G) => {
+      G.at(T(1, 12, 0), 'email', { from: 'Albion Atlantic Customer Care', subj: 'Endurskoðaður brottfarartími', body: 'Kæri Viðskiptavinur,\n\nFlug þitt AB 0271 mun nú fara kl. 15:45.\n\nInnritun opnar þrjár klukkustundir fyrir brottför.\n\nVið erum að gera okkar best.', fx: (G) => { G.S.dep = T(1, 15, 45); } });
+      G.at(T(1, 13, 10), 'chat', { body: 'Þú varst ekki á gistingu þinni. Af hverju ert þú í biðröð? 🙂' });
+    },
+    text: (G) => p(
+      'Miði, sæti, rúta sem fer þangað sem hún segist fara. Maðurinn í skyrtunni frá því í gær situr hinum megin við ganginn og segir ekkert, og svo, eftir tuttugu mínútur: ' + V('„Fimmtudagsflugið. Hraun. Tók Flybus. Allir hinir eru að bíða eftir flutningnum.“') + ' Hann horfir út um gluggann. ' + V('„Ég hugsa sífellt að ég hefði átt að bíða.“'),
+      'Ísland líður fram hjá: hraun, frábært kranavatn, sæmilega viðkunnanlegt fólk sem hótar þér ekki og lýgur ekki að þér. Bílstjórinn athugar ekki nafn nokkurs manns. Ísland á hrós skilið fyrir það. Keflavík er saklaus.',
+    ),
+    choices: [{ label: 'Koma á staðinn.', time: 45, do: (G) => { G.nerves(-4); G.collect(1); }, next: 'airport' }],
+  };
+
   /* ================================================================ endings */
   const endings = {
     terminal: {
@@ -1008,9 +1465,9 @@ CONTENTS.is = (() => {
     accommodated: {
       art: 'road', title: 'HÝST', kind: 'bad',
       hint: 'Tölvupósturinn var með merkinu.', blurb: 'Þú staðfestir bókunina.',
-      text: p(
-        'Bíllinn er hlýr, sætin eru úr leðri og bílstjórinn segir ekki orð. Á skjánum í mælaborðinu stendur HEATHROW RENAISSANCE LODGE · 1,894 km · KOMA —:—.',
-        'Þú horfir á flugvallarljósin fjarlægjast. Eftir smástund eru engin ljós lengur – bara hljóðið í dekkjunum, og lítil hljóðbjalla nýs tölvupósts, sem berst til að staðfesta að gisting þín hafi verið skipulögð.',
+      text: (G) => p(
+        'Bíllinn er hlýr, sætin eru úr leðri og bílstjórinn segir ekki orð. Á skjánum í mælaborðinu stendur ' + (G.has('lind') ? 'HÓTEL HRAUN · —— km · KOMA —:—.' : 'HEATHROW RENAISSANCE LODGE · 1,894 km · KOMA —:—.'),
+        (G.has('lind') ? 'Þú horfir á borgarljósin minnka.' : 'Þú horfir á flugvallarljósin minnka.') + ' Eftir nokkra stund eru engin ljós lengur – aðeins hljóðið í dekkjunum, og lítill hljómur frá nýjum tölvupósti, sem berst til að staðfesta að gisting þín hafi verið ráðstöfuð.',
       ),
     },
     crew: {
@@ -1019,7 +1476,7 @@ CONTENTS.is = (() => {
       text: (G) => p(
         'Rútan lyktar af nýju áklæði og engu öðru. Allir brosa til þín þegar þú gengur hjá. Enginn er í fötunum frá því í gær, því enginn hér á sér neinn gærdag.',
         'Yfirflugþjónninn lokar dyrunum með mjúkum, dýrum smelli. ' + V('„Meirihluti viðskiptavina okkar hafa verið skilningsríkir og þolinmóðir.“') + ' Hann á við þig. Þú hefur sýnt skilning. Þú hefur sýnt mikla þolinmæði.',
-        G.has('at_hotel') ? 'Rútan rennur út úr ljósinu, og bílastæðið fyrir aftan hana er autt, og hefur verið það um hríð.' : 'Rútan rennur út úr ljósinu, og stæðið fyrir aftan hana er autt, og hefur verið það um hríð.',
+        (G.has('lind') || (G.has('detoured') && !G.has('at_hotel'))) ? 'Rútan rennur út úr ljósinu, og stæðið á bak við hana er autt, og hefur verið það um stund.' : G.has('at_hotel') ? 'Rútan rennur út úr ljósinu, og bílastæðið fyrir aftan hana er autt, og hefur verið það um hríð.' : 'Rútan rennur út úr ljósinu, og stæðið fyrir aftan hana er autt, og hefur verið það um hríð.',
       ),
     },
     convenience: {
@@ -1034,8 +1491,8 @@ CONTENTS.is = (() => {
       art: 'corridor', title: 'NÆTURRÚTA', kind: 'bad',
       hint: 'Síðasta kall.', blurb: 'Þú svaraðir bankinu.',
       text: (G) => p(
-        G.has('nc_carpark') ? 'Þú gengur að dyrum rútunnar. Maðurinn í dökkbláu víkur til hliðar án þess að líta á þig. ' + V('„Fer núna,“') + ' segir hann, við hótelið, og það eru einu fyrirmælin sem nokkur hefur gefið þér í alla nótt sem tímasetning fylgdi.' : G.has('nc_corridor') ? 'Hann hættir að banka. Hann snýr sér ekki við. ' + V('„Fer núna,“') + ' segir hann, við hurðina fyrir framan sig, og gengur að stigaganginum, og þú fylgir á eftir, því það eru einu fyrirmælin sem nokkur hefur gefið þér í alla nótt sem tímasetning fylgdi.' : 'Gangurinn er tómur og teppið er blautt. Úr stigaganginum: ' + V('„Fer núna.“') + ' Þú fylgir því, því það eru einu fyrirmælin sem nokkur hefur gefið þér alla nóttina með tímasetningu.',
-        'Rútan á bílastæðinu bíður með kveikt innanljós. Allir inni snúa þegar að hótelinu. Það er sæti með nafninu þínu. Það er, reyndar, lítið prentað spjald með nafninu þínu, í Arial.',
+        G.has('coach_seen_street') && G.S.scene !== 'lind_knock' ? 'Þú gengur niður brekkuna. Maðurinn við dyrnar víkur til hliðar án þess að líta á þig. ' + V('„Fer núna,“') + ' segir hann, við götuna, og það eru einu fyrirmælin sem nokkur hefur gefið þér í alla nótt sem fylgdi tímasetning, og þeir vissu hvaða herbergi.' : G.has('nc_lind') ? 'Stigapallurinn er auður og stiginn er auður og útidyrnar, sem hún læsti, standa opnar út á götuna. Utan af götunni: ' + V('„Fer núna.“') + ' Þú fylgir henni, því það eru einu fyrirmælin sem nokkur hefur gefið þér í alla nótt sem fylgdi tímasetning, og því þeir vissu hvaða herbergi.' : G.has('nc_carpark') ? 'Þú gengur að dyrum rútunnar. Maðurinn í dökkbláu víkur til hliðar án þess að líta á þig. ' + V('„Fer núna,“') + ' segir hann, við hótelið, og það eru einu fyrirmælin sem nokkur hefur gefið þér í alla nótt sem tímasetning fylgdi.' : G.has('nc_corridor') ? 'Hann hættir að banka. Hann snýr sér ekki við. ' + V('„Fer núna,“') + ' segir hann, við hurðina fyrir framan sig, og gengur að stigaganginum, og þú fylgir á eftir, því það eru einu fyrirmælin sem nokkur hefur gefið þér í alla nótt sem tímasetning fylgdi.' : 'Gangurinn er tómur og teppið er blautt. Úr stigaganginum: ' + V('„Fer núna.“') + ' Þú fylgir því, því það eru einu fyrirmælin sem nokkur hefur gefið þér alla nóttina með tímasetningu.',
+        G.has('nc_lind') ? 'Rútan fyllir götuna vegg í vegg, kveikt á ljósunum inni. Allir inni snúa þegar að gistiheimilinu. Það er sæti með nafninu þínu. Það er, reyndar, lítið prentað spjald með nafninu þínu, í Arial, og fyrir neðan það, smærra: <em>aðrar ráðstafanir</em>.' : 'Rútan á bílastæðinu bíður með kveikt innanljós. Allir inni snúa þegar að hótelinu. Það er sæti með nafninu þínu. Það er, reyndar, lítið prentað spjald með nafninu þínu, í Arial.',
       ),
     },
     lift: {
@@ -1051,7 +1508,7 @@ CONTENTS.is = (() => {
       hint: 'Þig hefur alltaf langað að heimsækja Ísland.', blurb: 'Þú fórst í heitu laugarnar.',
       text: (G) => p(
         G.has('toothpaste') ? 'Vatnið er 38 °C, himinninn er á litinn eins og notaður pappírsklútur og þú ert í sokkunum úr 10-11, fallegustu sokkum sem þú hefur nokkurn tímann séð, nú fullum af brennisteini. Þetta er, hlutlægt séð, fallegt.' : 'Vatnið er 38°C, himinninn er á litinn eins og notuð bréfþurrka og þú ert í sokkunum úr fluginu því þú átt enga aðra sokka. Þetta er, hlutlægt séð, fallegt.',
-        'Klukkan 11:00 fer rúta af bílastæði hótels í þrjátíu kílómetra fjarlægð án þín. Klukkan 11:04 berst tölvupóstur sem segir að rútan þín hafi farið klukkan 09:00. Klukkan 11:05 spyr spjallmennið hvort þú hafir notið dvalarinnar.',
+        G.has('lind') ? 'Kl. 09:00, 10:00 og 11:00 fara gular rútur frá BSÍ án þín, með miðum sem þú keyptir ekki. Kl. 11:04 berst tölvupóstur sem segir að flutningurinn þinn hafi farið kl. 09:00. Kl. 11:05 spyr spjallmennið hvort þú hafir notið dvalarinnar.' : 'Klukkan 11:00 fer rúta af bílastæði hótels í þrjátíu kílómetra fjarlægð án þín. Klukkan 11:04 berst tölvupóstur sem segir að rútan þín hafi farið klukkan 09:00. Klukkan 11:05 spyr spjallmennið hvort þú hafir notið dvalarinnar.',
         'Þú vildir óska að þú hefðir ekki verið með apalöppina í hendinni þegar þú sagðir það.',
       ),
     },
@@ -1077,6 +1534,15 @@ CONTENTS.is = (() => {
       text: p(
         'Rútan stoppar, sem er það sem þú vildir. Dyrnar opnast út á útskot, girðingu, kindur, og vind sem hefur komið langan veg til að taka á móti þér. ' + V('„Eins og þú vilt,“') + ' segir bílstjórinn, og rútan heldur áfram án þín, í átt að einhverju sem gæti, úr þessari fjarlægð, verið flugvél.',
         'Ísland hefur ekkert gert af sér. Kindurnar eru afar viðkunnanlegar.',
+      ),
+    },
+    arrangements: {
+      art: 'street', title: 'AÐRAR RÁÐSTAFANIR', kind: 'bad',
+      hint: 'Hann var staðfestur. Allir sögðu það.', blurb: 'Þú beiðst eftir flutningnum frá hóteli sem flugfélagið bókaði aldrei.',
+      text: (G) => p(
+        'Rútan lyktar af engu. Allir í henni eiga tannkrem og hreina sokka og fullhlaðinn síma, og kinka kolli til þín þegar þú gengur hjá, því nú ertu í þeirra hópi: þriðjudagsins, fimmtudagsins, þíns. Konan í móttökunni stendur í dyragættinni með kiljuna upp að brjóstinu og veifar ekki. Hún hefur séð þetta áður. Hún setur skyrið á borðið á morgun.',
+        'Í öllum símunum í einu, ' + ALLY(G) + ': ' + V('„Takk fyrir þolinmæði þína. Flutningur þinn er staðfestur.“') + ' Rútan ekur fram hjá BSÍ, fram hjá gulu rútunni með opnar dyr, fram hjá afleggjaranum út á flugvöll, og heldur áfram, út fyrir hraunið, í átt að hóteli sem á von á þér.',
+        'Þú ert, loksins, nákvæmlega þar sem þér var ráðstafað.',
       ),
     },
     home: {
@@ -1114,6 +1580,7 @@ CONTENTS.is = (() => {
     from: 'Frá:', sent: 'Sent', received: 'Móttekið', arrived: 'barst', photographed: 'Myndað',
     tMail: 'PÓSTUR', tSms: 'SMS', tPaper: 'PAPPÍR', tAlly: 'ALLY', tNoted: 'SKRÁÐ · Flugfélagið hefur skráð endurgjöf þína.',
     gateNerves: 'Þú gætir ekki sagt það með stöðugri röddu.', gateDread: 'Þú getur ekki fengið þig til þess.',
+    tFlood: '{n} nýjar tilkynningar.', phoneDead: 'Rafmagnslaus',
   };
 
   return { start, scenes, endings, chat, ui, T, lang: 'is', broken: CONTENT_BROKEN };

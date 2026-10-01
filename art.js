@@ -251,6 +251,99 @@ const ART = (() => {
     grain(c, W, H, 12, r);
   };
 
+  // the phone, very large: dying (1% → dark) or coming back (a bolt, a bar filling, then the pile of notifications)
+  scenes.phone = (c, r, G) => {
+    const cv = c.canvas; if (!cv._t0) cv._t0 = Date.now(); const age = (Date.now() - cv._t0) / 1000;
+    const dead = G && G.S && G.S.phoneDead;
+    R(c, 0, 0, W, H, C.black); dither(c, 0, 0, W, H, C.night, .12, r);
+    // a duvet and a hand, in the dark
+    R(c, 0, 50, W, 22, C.wall2); dither(c, 0, 50, W, 22, C.floor2, .3, r);
+    // the phone
+    const px0 = 56, py0 = 6, pw = 48, ph = 60;
+    R(c, px0 - 2, py0 - 2, pw + 4, ph + 4, C.grey); R(c, px0, py0, pw, ph, C.black);
+    const sx = px0 + 3, sy = py0 + 4, sw = pw - 6, sh = ph - 10;
+    if (dead) {
+      const on = age < 3.2 ? true : age < 4.8 ? r() < .35 : false;
+      if (on) {
+        R(c, sx, sy, sw, sh, '#0d1116'); glow(c, 80, 36, 40, '#16202b', r, .25);
+        // 1% and a red sliver
+        R(c, 68, 20, 24, 10, C.black); R(c, 69, 21, 22, 8, '#0d1116'); R(c, 70, 22, 1, 6, C.red); R(c, 92, 24, 2, 2, C.grey);
+        for (let k = 0; k < 3; k++) R(c, 70 + k * 6, 36, 4, 5, C.red); // "1 %" as blocks
+        R(c, 64, 46, 32, 1, C.grey); R(c, 66, 49, 28, 1, C.grey); R(c, 70, 52, 20, 1, C.grey);
+      } else {
+        R(c, sx, sy, sw, sh, '#050506'); if (r() < .6) R(c, sx + 4, sy + 6, 10, 14, '#0a0b0d'); // your reflection
+      }
+    } else {
+      const t = Math.min(1, age / 4);
+      R(c, sx, sy, sw, sh, '#0d1116'); glow(c, 80, 36, 42, '#18242f', r, .35);
+      R(c, 68, 14, 24, 10, C.black); R(c, 69, 15, 22, 8, '#0d1116'); R(c, 70, 16, (20 * t) | 0, 6, t < .2 ? C.red : C.green);
+      // the bolt
+      R(c, 79, 28, 2, 4, C.warm); R(c, 77, 32, 4, 1, C.warm); R(c, 79, 33, 2, 4, C.warm);
+      // notifications piling up
+      if (age > 1.5) { const n = Math.min(12, ((age - 1.5) * 5) | 0); for (let k = 0; k < n; k++) { const y = 56 - k * 4; if (y < sy + 2) break; R(c, sx + 2, y, sw - 4, 3, k % 3 === 0 ? C.navy : '#1a2230'); R(c, sx + 3, y + 1, 2, 1, k % 3 === 0 ? C.gold : C.red); } }
+    }
+    grain(c, W, H, 10, r);
+  };
+
+  // BSÍ, the city bus terminal, at closing time: one bay lit, one bus idling, nobody for you
+  scenes.bsi = (c, r, G) => {
+    const day = G && G.t % 1440 >= 6 * 60 && G.t % 1440 < 20 * 60;
+    R(c, 0, 0, W, H, day ? C.dawn : C.night); if (day) dither(c, 0, 0, W, 24, C.dawn2, .3, r);
+    R(c, 0, 24, W, 10, C.wall2); R(c, 0, 20, W, 4, C.wall); // canopy
+    for (let x = 6; x < W; x += 30) R(c, x, 22, 14, 1, r() < .85 ? C.tube : C.tubeDim);
+    R(c, 0, 54, W, 18, C.road); dither(c, 0, 54, W, 18, C.grey, .06, r);
+    // bays and one bus
+    for (let x = 0; x < W; x += 40) R(c, x, 52, 1, 20, C.line);
+    R(c, 10, 34, 54, 20, C.yellow); R(c, 10, 34, 54, 2, shade(C.yellow)); for (let k = 0; k < 6; k++) R(c, 14 + k * 8, 38, 5, 8, r() < .9 ? C.warmDim : C.black); R(c, 14, 52, 6, 4, C.black); R(c, 54, 52, 6, 4, C.black);
+    if (!day) { R(c, 96, 32, 56, 22, C.navy); R(c, 96, 46, 56, 2, C.gold); for (let k = 0; k < 6; k++) R(c, 100 + k * 8, 36, 5, 8, C.warm); R(c, 100, 52, 6, 4, C.black); R(c, 140, 52, 6, 4, C.black); }
+    // backpackers with rucksacks
+    for (let i = 0; i < 5; i++) { const x = 70 + ((r() * 80) | 0), y = 60 + ((r() * 8) | 0); person(c, x, y, 10, C.person, r); R(c, x + 3, y - 9, 3, 5, C.curtain); }
+    // a kiosk: diesel and cinnamon
+    R(c, 130, 36, 22, 18, C.wall); R(c, 134, 40, 14, 6, r() < .9 ? C.warmDim : C.black);
+    rain(c, W, H, r, 20);
+    grain(c, W, H, 14, r);
+  };
+
+  // room 7 at Hótel Lind: a window onto a street, which is its own kind of wrong at 4 a.m.
+  scenes.street = (c, r, G) => {
+    R(c, 0, 0, W, H, C.wall2);
+    R(c, 40, 6, 80, 46, C.night); R(c, 79, 6, 2, 46, C.wall); R(c, 40, 28, 80, 2, C.wall);
+    // the street: a lamp, parked cars, the building opposite with one window lit
+    R(c, 40, 40, 80, 12, C.road); R(c, 44, 10, 70, 28, C.wall2); for (let x = 48; x < 110; x += 12) R(c, x, 14, 6, 6, r() < .12 ? C.warmDim : C.black);
+    R(c, 100, 16, 1, 24, C.grey); glow(c, 100, 17, 12, C.sodiumDim, r, .5);
+    R(c, 46, 42, 14, 6, C.grey); R(c, 64, 42, 14, 6, C.person);
+    const d = G ? G.D : 0;
+    if (d < 3) { if (r() < .5) person(c, 50 + ((r() * 50) | 0), 50, 8, C.silhouette, r); } // somebody going home
+    if (G && (G.has('seen_lind') || d >= 4)) { person(c, 98, 50, 9, C.navy2, r); R(c, 99, 41, 2, 1, C.skin); if (G.has('seen_lind')) { R(c, 86, 40, 30, 10, C.navy); R(c, 86, 47, 30, 1, C.gold); for (let k = 0; k < 4; k++) R(c, 89 + k * 7, 42, 4, 4, C.warm); } }
+    // curtains, thin
+    R(c, 34, 2, 8, 52, C.curtain); R(c, 118, 2, 8, 52, C.curtain); checker(c, 34, 2, 8, 52, C.curtain2); checker(c, 118, 2, 8, 52, C.curtain2);
+    // bed, radiator, a cable on the floor
+    R(c, 0, 56, W, 16, C.floor); R(c, 0, 50, 30, 10, C.person); R(c, 2, 46, 26, 5, C.white2);
+    R(c, 132, 44, 20, 10, C.grey); for (let k = 0; k < 5; k++) R(c, 134 + k * 4, 45, 1, 8, C.wall);
+    if (G && G.has('charger')) { R(c, 110, 62, 20, 1, C.white2); R(c, 128, 60, 3, 3, C.white); }
+    rain(c, W, H, r, 8);
+    grain(c, W, H, 12, r);
+  };
+
+  // the guesthouse: a reception the size of a cupboard, a kitchen door, a drawer of other people's cables
+  scenes.guesthouse = (c, r, G) => {
+    R(c, 0, 0, W, H, C.curtain2); dither(c, 0, 0, W, H, C.wall2, .25, r);
+    R(c, 0, 0, W, 6, C.ceiling); R(c, 20, 3, 14, 2, r() < .95 ? C.warm : C.warmDim); glow(c, 27, 5, 16, C.warmDim, r, .3);
+    R(c, 0, 50, W, 22, C.floor); for (let x = 0; x < W; x += 10) R(c, x, 50, 1, 22, C.floor2); // boards
+    // desk, a bell, the drawer
+    R(c, 8, 34, 50, 18, C.curtain); R(c, 8, 34, 50, 2, C.wall); R(c, 40, 30, 4, 4, C.gold); R(c, 12, 40, 16, 6, C.wall2); R(c, 18, 42, 4, 1, C.white2);
+    // the clerk
+    person(c, 30, 34, 12, C.person, r); px(c, 31, 21, C.skin);
+    // kitchen door with light, a stair going up
+    R(c, 100, 12, 22, 40, C.wall); R(c, 102, 14, 18, 36, r() < .9 ? C.warmDim : C.wall2);
+    for (let k = 0; k < 8; k++) R(c, 130 + k * 3, 48 - k * 4, 18 - k * 2, 2, C.wall);
+    // guests in the kitchen, in clean socks
+    const n = (G && G.has('morning')) ? 4 : 1; for (let i = 0; i < n; i++) person(c, 104 + i * 4, 46 + ((r() * 3) | 0), 8, C.silhouette, r);
+    // a rack of leaflets: glaciers, whales, northern lights
+    for (let k = 0; k < 4; k++) R(c, 64 + k * 7, 26, 5, 8, [C.turq, C.white, C.green, C.sodium][k]);
+    grain(c, W, H, 10, r);
+  };
+
   scenes.void = (c, r) => { R(c, 0, 0, W, H, C.black); dither(c, 0, 0, W, H, C.night, .2, r); if (r() < .5) R(c, (r() * W) | 0, (r() * H) | 0, 2, 1, C.warmDim); grain(c, W, H, 20, r); };
 
   /* ------------------------------------------------------------ mounting */
