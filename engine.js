@@ -163,8 +163,8 @@ const Game = (() => {
   function deliver(m, force) {
     if (S.phoneDead && !force && m.ch !== 'paper') { S.backlog.push(m); return; }   // paper is a thing you hold; it does not need a battery
     m.id = ++S.mid;
-    m.arrived = S.t;
-    if (m.stamp == null) m.stamp = S.t;
+    m.arrived = S.t + (S.inFlightTime || 0);
+    if (m.stamp == null) m.stamp = m.arrived;
     m.read = false;
     S.inbox.push(m);
     if (m.fx) { const fx = m.fx; delete m.fx; fx(G); }
@@ -209,7 +209,9 @@ const Game = (() => {
     S = newState();
     S.lang = document.documentElement.lang || 'en';
     try { localStorage.setItem(LS_RUNS, String((+localStorage.getItem(LS_RUNS) || 0) + 1)); } catch (e) { /* ignore */ }
+    ui.open = null; ui.tab = 'email';   // the phone starts clean too: nothing from the last run stays on its screen
     show(CONTENT.start.scene);
+    renderStatus(); renderPhone();
   }
 
   function show(id) {
@@ -220,6 +222,8 @@ const Game = (() => {
     S.scene = id;
     if (id === 'knock' || id === 'knock2' || id === 'corridor_knock' || id === 'lind_knock' || id === 'lind_lobby_knock') AUDIO.event('knock');
     if (id === 'phone_dies' || id === 'bsi') AUDIO.event('dead');
+    if (id === 'standoff') AUDIO.event('standoff');
+    if (id === 'standoff_crowd' || id === 'standoff_fuss') AUDIO.event('purser');
     if (id === 'cabin' || id === 'takeoff') AUDIO.event('chime');
     if (sc.enter) {
       sc.enter(G);
@@ -234,13 +238,16 @@ const Game = (() => {
     pendingGo = null;
     if (c.once) S.once[c.once] = true;
     S.last = null;
+    S.prevScene = S.scene; S.lastChoice = String(c.label || '');   // so a scene can know what you were doing when it interrupted you
     // the same thing done again costs less: the gauges reward variety, not ritual
     const rk = 'choice:' + S.scene + '|' + c.label;
     const rep = S.counts[rk] || 0; S.counts[rk] = rep + 1;
     const scale = rep ? 0.5 : 1;
     if (c.nd) G.nerves(Math.round(c.nd * (c.nd > 0 ? scale : 1)));
     if (c.dd) G.dread(Math.round(c.dd * (c.dd > 0 ? scale : 1)));
+    S.inFlightTime = c.time || 0;   // a message sent while this choice plays out is stamped when the choice ends, not when it began
     if (c.do) c.do(G);
+    S.inFlightTime = 0;
     if (c.time) advance(c.time);
     const fatal = check();
     let next = fatal || pendingGo || (typeof c.next === 'function' ? c.next(G) : c.next);
@@ -257,8 +264,8 @@ const Game = (() => {
     const root = $('#scene');
     root.innerHTML = '';
     const box = el('div', 'ending ' + (E.kind || 'bad'));
-    if (E.art) { const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); box.appendChild(cv); ART.scene(cv, E.art, G); AUDIO.scene(E.art, G.D, G.N); }
-    AUDIO.event(E.kind === 'good' ? 'good' : 'end');
+    if (E.art) { const cv = el('canvas', 'vignette'); cv.setAttribute('aria-hidden', 'true'); box.appendChild(cv); ART.scene(cv, E.art, G); }
+    AUDIO.ending(id, E.kind);
     box.appendChild(el('div', 'ending-kicker', E.kind === 'good' ? CONTENT.ui.madeIt : CONTENT.ui.gameOver));
     box.appendChild(el('div', 'ending-title', esc(E.title)));
     const txt = el('div', 'text');
@@ -342,9 +349,10 @@ const Game = (() => {
 
   // an option the player can no longer take. The two reasons are fixed phrases, never explained.
   function gateOf(c) {
-    if (c.nerveMax != null && S.nerves > c.nerveMax) return c.whyNot || CONTENT.ui.gateNerves;
+    if (c.gate) { const g = c.gate(G); if (g) return g; }   // a content-defined reason the option is closed
+    if (c.nerveMax != null && S.nerves > c.nerveMax) return c.whyNotN || c.whyNot || CONTENT.ui.gateNerves;
     // an option that disobeys an instruction (`instr`: the key of the message that gave it) is only closed by dread once that message has been read
-    if (c.dreadMax != null && S.dread > c.dreadMax && (!c.instr || S.flags['read:' + c.instr])) return c.whyNot || CONTENT.ui.gateDread;
+    if (c.dreadMax != null && S.dread > c.dreadMax && (!c.instr || S.flags['read:' + c.instr])) return c.whyNotD || c.whyNot || CONTENT.ui.gateDread;
     return null;
   }
 
@@ -416,12 +424,16 @@ const Game = (() => {
     if (!S.buses[S.scene]) S.buses[S.scene] = sc.buses(G);
     const buses = S.buses[S.scene];
     const grid = el('div', 'buses');
+    const fv = (x) => (typeof x === 'function' ? x(G) : x);   // a card's look-time, look-destination and board label may depend on the moment
     buses.forEach((b) => {
       const key = S.scene + ':' + b.key;
       const business = !!S.flags.business; // Business Class: the pictures are all you get
       const card = el('div', 'bus' + (S.looked[key] ? ' looked' : '') + (business ? ' business' : ''));
       if (b.art) { const cv = el('canvas', 'bus-art'); cv.setAttribute('aria-hidden', business ? 'false' : 'true'); card.appendChild(cv); ART.bus(cv, b.art, S.seed + b.key.length * 31 + (S.looked[key] ? 1 : 0)); }
-      if (!business) {
+      if (business) {
+        // the pictures are all you get, and the card says so, in the airline's words, so that the blank is legible as a choice you made
+        card.appendChild(el('div', 'bus-name business-note', esc(CONTENT.ui.businessNote)));
+      } else {
         card.appendChild(el('div', 'bus-name', esc(b.name)));
         card.appendChild(el('div', 'bus-sign ' + (b.signStyle || 'window'), esc(b.sign)));
         const ul = el('ul');
@@ -432,11 +444,11 @@ const Game = (() => {
       const act = el('div', 'bus-actions');
       if (!S.looked[key]) {
         const lk = el('button', null, CONTENT.ui.look); lk.title = CONTENT.ui.lookHint;
-        lk.onclick = () => { S.looked[key] = true; advance(b.lookTime || 3); const f = check(); if (f) return show(f); render(); };
+        lk.onclick = () => { S.looked[key] = true; const go = fv(b.lookGo), lt = fv(b.lookTime) || 3; if (go) return choose({ label: CONTENT.ui.look, time: lt, next: go }); advance(lt); const f = check(); if (f) return show(f); if (sc.afterLook) sc.afterLook(G); render(); };
         act.appendChild(lk);
       }
       const gate = gateOf(b.board);
-      const bd = el('button', 'board' + (b.board.kind ? ' ' + b.board.kind : '') + (gate ? ' gated' : ''), esc(gate ? gate : (b.boardLabel || CONTENT.ui.board)));
+      const bd = el('button', 'board' + (b.board.kind ? ' ' + b.board.kind : '') + (gate ? ' gated' : ''), esc(gate ? gate : (fv(b.boardLabel) || CONTENT.ui.board)));
       if (gate) { bd.disabled = true; S.gated++; } else bd.onclick = () => choose(b.board);
       act.appendChild(bd);
       card.appendChild(act);
@@ -498,9 +510,9 @@ const Game = (() => {
 
     const body = $('#phone-body');
     body.innerHTML = '';
+    if (ui.tab === 'paper') return renderPaper(body);   // paper is a thing you hold: it does not need a battery
     if (S.phoneDead) { body.appendChild(el('div', 'dead-screen', `<span>${esc(CONTENT.ui.phoneDead)}</span>`)); return; }
     if (ui.tab === 'chat') return renderChat(body);
-    if (ui.tab === 'paper') return renderPaper(body);
     if (ui.tab === 'sms') return renderSms(body);
     renderMailList(body);
   }
@@ -527,9 +539,9 @@ const Game = (() => {
     const v = el('div', 'msg-view email');
     const back = el('button', 'back', CONTENT.ui.inbox); back.onclick = () => { ui.open = null; renderPhone(); };
     v.appendChild(back);
-    v.appendChild(el('div', 'email-head', `<div class="crest">✦ ALBION ATLANTIC</div><div class="subject">${esc(m.subj)}</div><div class="meta">${CONTENT.ui.from} ${esc(m.from)} · ${CONTENT.ui.sent} ${esc(clock(m.stamp))} · ${CONTENT.ui.received} ${esc(clock(m.arrived))}</div>`));
+    v.appendChild(el('div', 'email-head' + (m.self ? ' self' : ''), `${m.self ? '' : '<div class="crest">✦ ALBION ATLANTIC</div>'}<div class="subject">${esc(m.subj)}</div><div class="meta">${CONTENT.ui.from} ${esc(m.from)} · ${CONTENT.ui.sent} ${esc(clock(m.stamp))} · ${CONTENT.ui.received} ${esc(clock(m.arrived))}</div>`));
     v.appendChild(el('div', 'body', m.body));
-    v.appendChild(el('div', 'email-foot', CONTENT.ui.emailFoot));
+    if (!m.self) v.appendChild(el('div', 'email-foot', CONTENT.ui.emailFoot));   // a mail to yourself has no crest and no tagline
     if (m.actions) {
       const q = el('div', 'quick');
       m.actions.filter((a) => !a.if || a.if(G)).forEach((a) => { const b = el('button', null, esc(a.label)); b.onclick = () => { ui.open = null; choose(a); }; q.appendChild(b); });

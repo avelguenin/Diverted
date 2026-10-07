@@ -99,6 +99,9 @@ const AUDIO = (() => {
   // the guesthouse: a fridge, a clock, a kettle somebody else put on
   scapes.guesthouse = (L) => { hum(L, 60, 0.01); L.add(noise('brown'), filter('lowpass', 140, 0.8), gain(0.04)); L.every(900, 1100, () => burst(ctx.currentTime, 0.015, 2800, 10, 0.025, L.out)); L.every(25000, 60000, () => { const g = gain(0); L.add(noise('white'), filter('bandpass', 3000, 0.7), g); const t = ctx.currentTime; g.gain.linearRampToValueAtTime(0.05, t + 6); g.gain.linearRampToValueAtTime(0, t + 9); }); };
 
+  // the springs: water moving, a lot of air, voices far off in steam, a shuttle that comes and goes
+  scapes.lagoon = (L) => { noise('brown'); L.add(noise('brown'), filter('lowpass', 500, 0.5), gain(0.10)); const g = gain(0.05); L.add(noise('white'), filter('bandpass', 1800, 0.5), g); lfo(0.13, 0.03, g.gain); murmur(L, 0.04); L.every(9000, 20000, () => { const t = ctx.currentTime; burst(t, 0.6, 700, 1, 0.06, L.out, 'brown'); burst(t + 0.3, 0.8, 500, 1, 0.05, L.out, 'brown'); }); L.every(30000, 60000, () => { const g2 = gain(0); L.add(osc('sawtooth', 40), filter('lowpass', 120, 2), g2); const t = ctx.currentTime; g2.gain.linearRampToValueAtTime(0.04, t + 4); g2.gain.linearRampToValueAtTime(0, t + 12); }); };
+
   scapes.void = (L) => { drone(L, 30, 0.05); L.every(900, 1400, () => thud(ctx.currentTime, 60, 0.25, 0.12, L.out)); };
 
   /* ---------------------------------------------------------- dread underneath */
@@ -125,36 +128,46 @@ const AUDIO = (() => {
     nervesBus.gain.cancelScheduledValues(t); nervesBus.gain.setValueAtTime(nervesBus.gain.value, t);
     nervesBus.gain.linearRampToValueAtTime(tier <= 1 ? 0 : 1, t + 1.5);
   }
-  // A metal bar on a rail. Not a bell: a hit. A burst of bright noise with a hard edge, a short
-  // metallic ring from a very short feedback comb (the rail), a low knock from the bar, all of it
-  // clipped a little. At the top of the nerves range these come irregularly; at the very top they
-  // come in angry runs, as if somebody downstairs were hammering at something that will not give.
+  // A mining bar dropped on a rail, in a large industrial building that keeps the sound for a
+  // while. Not a bell: a hit. A burst of bright noise with a hard edge, soft-clipped, a low dead
+  // knock from the bar, a 3 ms comb that puts the rail's metal in it — and around it, chains: a
+  // scatter of small bright clicks that settle after the hit, like links coming to rest.
   let rail = null, crush = null;
+  function chains(when, n, vol) {
+    let d = 0;
+    for (let k = 0; k < n; k++) {
+      d += 0.012 + Math.random() * 0.045 * (1 + k * 0.25);
+      const f = 3000 + Math.random() * 5000;
+      burst(when + d, 0.012, f, 4, vol * (0.9 - k * (0.6 / n)) * (0.6 + Math.random() * 0.6), crush);
+      if (Math.random() < 0.4) tone(when + d, f * 0.7, 0.05, vol * 0.15, hall, 'triangle');
+    }
+  }
   function clang(when, vol = 0.12) {
-    // the hit: two noise bursts, one bright and short, one with a bit of body
-    burst(when, 0.025, 5200 + Math.random() * 2500, 2.5, vol * 1.6, crush);
-    burst(when + 0.004, 0.09, 1900 + Math.random() * 900, 1.2, vol * 0.9, crush);
-    // the bar: a low, dead knock
-    thud(when, 95 + Math.random() * 40, 0.12, vol * 1.1, crush);
-    // the rail: a few inharmonic partials, high, that ring briefly and die unevenly
-    const base = 1100 + Math.random() * 900;
-    [1, 1.47, 2.09, 3.3].forEach((r, k) => {
+    burst(when, 0.025, 5200 + Math.random() * 2500, 2.5, vol * 1.7, crush);
+    burst(when + 0.004, 0.11, 1700 + Math.random() * 900, 1.2, vol * 1.0, crush);
+    thud(when, 80 + Math.random() * 40, 0.16, vol * 1.3, crush);
+    const base = 900 + Math.random() * 900;
+    [1, 1.47, 2.09, 3.3, 4.7].forEach((r, k) => {
       const o = osc('sine', base * r), g = gain(0); o.connect(g); g.connect(rail);
-      const dur = 0.25 + Math.random() * 0.45 - k * 0.05;
-      g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(vol * 0.35 / (1 + k), when + 0.003); g.gain.exponentialRampToValueAtTime(0.0005, when + Math.max(0.12, dur));
+      const dur = 0.3 + Math.random() * 0.5 - k * 0.05;
+      g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(vol * 0.4 / (1 + k), when + 0.003); g.gain.exponentialRampToValueAtTime(0.0005, when + Math.max(0.12, dur));
       o.start(when); o.stop(when + Math.max(0.12, dur) + 0.05);
     });
+    chains(when + 0.03, 5 + ((Math.random() * 6) | 0), vol * 0.9);
   }
   function clangs() {
     const tier = nervesTier;
     if (ctx && tier >= 3) {
       const t = ctx.currentTime;
-      const v = tier >= 4 ? 0.11 : 0.07;
-      clang(t, v);
-      if (Math.random() < (tier >= 4 ? 0.5 : 0.25)) clang(t + 0.09 + Math.random() * 0.12, v * 0.8);               // the bar bounces
-      if (tier >= 4 && Math.random() < 0.35) { const n = 3 + ((Math.random() * 4) | 0); let d = 0.5; for (let k = 0; k < n; k++) { d += 0.16 + Math.random() * 0.14; clang(t + d, v * (0.7 + Math.random() * 0.4)); } }   // hammering
+      const v = tier >= 4 ? 0.13 : 0.085;
+      if (Math.random() < 0.3) { chains(t, 8 + ((Math.random() * 8) | 0), v * 0.8); }                                // sometimes only the chain, dragged
+      else {
+        clang(t, v);
+        if (Math.random() < (tier >= 4 ? 0.55 : 0.3)) clang(t + 0.09 + Math.random() * 0.12, v * 0.8);            // the bar bounces
+        if (tier >= 4 && Math.random() < 0.4) { const n = 3 + ((Math.random() * 4) | 0); let d = 0.5; for (let k = 0; k < n; k++) { d += 0.16 + Math.random() * 0.14; clang(t + d, v * (0.7 + Math.random() * 0.4)); } }   // hammering
+      }
     }
-    const next = tier >= 4 ? 4000 + Math.random() * 9000 : tier >= 3 ? 8000 + Math.random() * 20000 : 6000;
+    const next = tier >= 4 ? 3500 + Math.random() * 8000 : tier >= 3 ? 7000 + Math.random() * 18000 : 6000;
     clangTimer = setTimeout(clangs, next);
   }
 
@@ -223,8 +236,9 @@ const AUDIO = (() => {
     whine = gain(0); const w = osc('sine', 9000); w.connect(whine); whine.connect(master); w.start();
     nervesBus = gain(0); const lp = filter('lowpass', 900, 0.7); nervesBus.connect(lp); lp.connect(master);
     // the hall the clangs ring in: a short feedback delay, darkened each pass
-    hall = gain(1); const dl = ctx.createDelay(1.0); dl.delayTime.value = 0.23; const fb = gain(0.38); const dark = filter('lowpass', 1800, 0.5);
-    hall.connect(master); hall.connect(dl); dl.connect(dark); dark.connect(fb); fb.connect(dl); fb.connect(master);
+    hall = gain(1); const dl = ctx.createDelay(1.0); dl.delayTime.value = 0.31; const fb = gain(0.52); const dark = filter('lowpass', 2200, 0.5);
+    const dl2 = ctx.createDelay(1.0); dl2.delayTime.value = 0.47; const fb2 = gain(0.42); const dark2 = filter('lowpass', 1400, 0.5);
+    hall.connect(master); hall.connect(dl); dl.connect(dark); dark.connect(fb); fb.connect(dl); fb.connect(master); hall.connect(dl2); dl2.connect(dark2); dark2.connect(fb2); fb2.connect(dl2); fb2.connect(master);
     // the rail: a 3 ms comb with feedback, which turns a noise burst into something with a metal in it
     rail = gain(1); const cd = ctx.createDelay(0.05); cd.delayTime.value = 0.0031; const cfb = gain(0.62); const chp = filter('highpass', 900, 0.7);
     rail.connect(cd); cd.connect(chp); chp.connect(cfb); cfb.connect(cd); cfb.connect(hall); rail.connect(hall);
@@ -260,8 +274,60 @@ const AUDIO = (() => {
     if (name === 'clang') { clang(t, 0.12); }
     if (name === 'bell') { bell(t, 73.4, 0.06, 7); }
     if (name === 'dead') { const o = osc('sine', 1800), g = gain(0); o.connect(g); g.connect(master); g.gain.setValueAtTime(0.06, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.9); o.frequency.setValueAtTime(1800, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.9); o.start(t); o.stop(t + 1); burst(t + 1.0, 0.02, 1200, 6, 0.08); }
+    // the stand-off: the board flipping, a PA chime, and a bell as the purser comes out of the door
+    if (name === 'standoff') { for (let i = 0; i < 14; i++) burst(t + i * 0.03, 0.015, 2400, 8, 0.06); tone(t + 0.5, 660, 0.35, 0.07); tone(t + 0.85, 523, 0.8, 0.07); }
+    if (name === 'purser') { bell(t, 73.4, 0.09, 8); clang(t + 0.4, 0.06); }
     if (name === 'flood') { for (let i = 0; i < 14; i++) { const d = i * 0.11 + Math.random() * 0.03; burst(t + d, 0.05, 180, 2, 0.1, null, 'brown'); if (i % 3 === 0) tone(t + d, 830, 0.2, 0.03); } }
   }
+  /* ---------------------------------------------------------- one theme per ending
+     Short, procedural, and in the mood of what the ending does to you: not a sting, a verdict. */
+  function ending(id, kind) {
+    if (!started) { pendingKey = 'void'; return; }
+    if (ctx.state === 'suspended') ctx.resume();
+    setNerves(0);
+    if (current) current.stop(2.5); current = null; currentKey = 'end:' + id;
+    const L = layer(); current = L; const t = ctx.currentTime; L.out.gain.setValueAtTime(0, t); L.out.gain.linearRampToValueAtTime(1, t + 1.5);
+    if (id === 'crew') {
+      // the bells, descending, then the drone, then a black with no road in it
+      setDread(6);
+      [73.4, 69.3, 65.4, 61.7, 55].forEach((f, k) => bell(t + 0.6 + k * 1.9, f, 0.06 - k * 0.006, 8));
+      L.add(osc('sine', 36.7), gain(0.08)); L.add(osc('sine', 37.1), gain(0.05));
+      L.every(6000, 9000, () => { const g = gain(0); L.add(noise('brown'), filter('lowpass', 160, 0.7), g); const tt = ctx.currentTime; g.gain.linearRampToValueAtTime(0.12, tt + 3); g.gain.linearRampToValueAtTime(0, tt + 7); });
+    } else if (id === 'left') {
+      // the terminal: fluorescent hum, a tannoy two-note that never gets a third, a flat 55 Hz that does not move
+      setDread(3);
+      hum(L, 50, 0.025); hum(L, 100, 0.012); L.add(osc('sine', 55), gain(0.05));
+      L.every(7000, 12000, () => { const tt = ctx.currentTime; tone(tt, 660, 0.4, 0.05, L.out); tone(tt + 0.45, 587, 0.9, 0.05, L.out); });
+      L.every(2500, 5000, () => burst(ctx.currentTime, 0.02, 3500, 6, 0.05, L.out));
+    } else if (id === 'lazarus') {
+      // water, breath, a warm major third that swells and never resolves, a heartbeat that slows and stops
+      setDread(2);
+      L.add(noise('brown'), filter('lowpass', 500, 0.5), gain(0.09)); const g = gain(0.04); L.add(noise('white'), filter('bandpass', 1800, 0.5), g); lfo(0.1, 0.025, g.gain);
+      const pad = gain(0); L.add(osc('sine', 146.8), pad); L.add(osc('sine', 185.0), pad); L.add(osc('sine', 293.7), gain(0.012)); pad.gain.linearRampToValueAtTime(0.05, t + 6); lfo(0.07, 0.015, pad.gain);
+      let bpm = 60, d = 0.8; for (let k = 0; k < 14; k++) { thud(t + d, 62, 0.12, 0.16 * (1 - k / 16), nervesBus); thud(t + d + 0.17, 52, 0.11, 0.1 * (1 - k / 16), nervesBus); d += 60 / bpm; bpm = Math.max(30, bpm - 2.5); }
+      nervesBus.gain.setValueAtTime(1, t);
+    } else if (id === 'lift') {
+      // the lift bell, hold music, a drone going down by semitones for longer than the building has floors
+      setDread(5);
+      tone(t + 0.3, 1047, 1.2, 0.07, L.out); tone(t + 0.32, 1319, 1.2, 0.05, L.out);
+      const o = osc('sawtooth', 110), f = filter('lowpass', 300, 2), g = gain(0.05); L.add(o, f, g);
+      for (let k = 1; k <= 16; k++) o.frequency.setValueAtTime(110 * Math.pow(2, -k / 12), t + 1.5 + k * 1.1);
+      L.every(5000, 9000, () => { const tt = ctx.currentTime; [523, 659, 784].forEach((ff, k) => tone(tt + k * 0.25, ff, 0.6, 0.02, L.out, 'triangle')); });
+    } else if (id === 'collective') {
+      // rain on a staircase, and a chord that people make by accident: a stack of fifths, warm, a little out of tune
+      setDread(0);
+      rain(L, 0.08, 3000); murmur(L, 0.05);
+      [110, 165, 247, 370].forEach((f, k) => { const g = gain(0); L.add(osc(k % 2 ? 'triangle' : 'sine', f * (1 + (Math.random() - 0.5) * 0.01)), g); g.gain.linearRampToValueAtTime(0.035 - k * 0.005, t + 1 + k * 0.7); });
+      L.every(6000, 10000, () => { const tt = ctx.currentTime; tone(tt, 660, 0.4, 0.04, L.out); tone(tt + 0.4, 880, 0.7, 0.04, L.out); });
+    } else {
+      // home: the cabin, and a two-note that finally resolves upward
+      setDread(0);
+      drone(L, 55, 0.05); L.add(noise('brown'), filter('lowpass', 220, 0.7), gain(0.14));
+      tone(t + 0.4, 660, 0.4, 0.06, L.out); tone(t + 0.8, 880, 0.9, 0.07, L.out); tone(t + 1.6, 1108, 2.4, 0.05, L.out);
+      L.every(9000, 15000, () => { const tt = ctx.currentTime; tone(tt, 880, 0.5, 0.03, L.out); tone(tt + 0.5, 1108, 1.2, 0.03, L.out); });
+    }
+  }
+
   function toggle() {
     muted = !muted;
     try { localStorage.setItem(LS, muted ? '1' : '0'); } catch (e) { /* ignore */ }
@@ -275,5 +341,5 @@ const AUDIO = (() => {
   document.addEventListener('pointerdown', kick, { passive: true });
   document.addEventListener('keydown', kick);
 
-  return { scene, event, toggle, isMuted, start, tiers: () => ({ nerves: nervesTier, dread: dreadTier, started }) };
+  return { scene, event, ending, toggle, isMuted, start, tiers: () => ({ nerves: nervesTier, dread: dreadTier, started }) };
 })();

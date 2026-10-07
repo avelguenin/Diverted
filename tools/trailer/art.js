@@ -344,6 +344,24 @@ const ART = (() => {
     grain(c, W, H, 10, r);
   };
 
+  // the springs: pale water, steam, lava at the edges, people standing very still in it
+  scenes.lagoon = (c, r, G) => {
+    R(c, 0, 0, W, H, C.dawn); dither(c, 0, 0, W, 26, C.dawn2, .35, r);
+    R(c, 0, 22, W, 8, C.lava); dither(c, 0, 22, W, 8, C.lava2, .4, r);
+    R(c, 0, 30, W, 42, '#8fb7b3'); dither(c, 0, 30, W, 42, '#a9cdc8', .25, r); dither(c, 0, 30, W, 42, '#6f9995', .15, r);
+    // steam
+    for (let k = 0; k < 10; k++) { const x = (r() * W) | 0, y = 18 + ((r() * 30) | 0); glow(c, x, y, 10 + ((r() * 8) | 0), '#d9e4e2', r, .22); }
+    // bathers: heads and shoulders, very still
+    const d = G ? G.D : 0;
+    for (let i = 0; i < 9; i++) { const x = 8 + ((r() * 140) | 0), y = 40 + ((r() * 24) | 0); R(c, x, y - 4, 3, 3, C.skin); R(c, x - 1, y - 1, 5, 2, i % 3 === 0 && d >= 3 ? C.white : C.person); }
+    if (d >= 4) { R(c, 134, 46, 3, 3, C.skin); R(c, 132, 49, 7, 3, C.navy2); R(c, 131, 51, 9, 1, C.navy2); }   // a man in navy, up to his chest, hands folded on the surface
+    // the walkway and the bar
+    R(c, 0, 62, 40, 10, C.curtain); for (let x = 0; x < 40; x += 4) R(c, x, 62, 1, 10, C.curtain2);
+    R(c, 120, 34, 22, 8, C.curtain); R(c, 122, 30, 18, 4, C.curtain2); R(c, 126, 36, 2, 2, C.turq); R(c, 132, 36, 2, 2, C.turq);
+    rain(c, W, H, r, 8, C.white2);
+    grain(c, W, H, 10, r);
+  };
+
   scenes.void = (c, r) => { R(c, 0, 0, W, H, C.black); dither(c, 0, 0, W, H, C.night, .2, r); if (r() < .5) R(c, (r() * W) | 0, (r() * H) | 0, 2, 1, C.warmDim); grain(c, W, H, 20, r); };
 
   /* ------------------------------------------------------------ mounting */

@@ -205,6 +205,7 @@ a.choice { text-decoration: none; display: block; }
 .email-head { background: var(--navy); color: #fff; padding: 12px; border-bottom: 3px solid var(--gold); margin: -8px -8px 10px; }
 .email-head .crest { color: var(--gold); font-size: 11px; letter-spacing: .3em; }
 .email-head .subject { font-weight: 700; margin-top: 4px; }
+.email-head.self { background: #1c1e22; border-bottom-color: #3a3d3a; }
 .email-head .meta { font-size: 11px; opacity: .8; margin-top: 2px; }
 .msg-view.email .body { font-family: var(--sans); }
 .msg-view.email .body a { color: #7fb2ff; }
@@ -290,9 +291,11 @@ a.choice { text-decoration: none; display: block; }
 }
 
 /* ---- the phone, dead: a black slab that still reflects you ---- */
-.phone.dead .tabs { opacity: .15; pointer-events: none; }
+.phone.dead .tab:not([data-tab="paper"]) { opacity: .15; pointer-events: none; }
 .phone.dead .phone-top { color: #3a3d3a; }
 .phone.dead .phone-batt { color: var(--red); animation: none; }
 .dead-screen { height: 100%; min-height: 220px; display: flex; align-items: center; justify-content: center; background: #050506; background-image: linear-gradient(160deg, rgba(255,255,255,.035) 0%, rgba(255,255,255,0) 45%); }
 .dead-screen span { font-family: var(--pixel); font-size: 8px; letter-spacing: .12em; color: #2a2c2a; text-transform: uppercase; }
 .scene .vignette.tall { aspect-ratio: 160 / 72; }
+
+.bus-name.business-note { color: var(--amber-dim); font-style: italic; font-size: 17px; }

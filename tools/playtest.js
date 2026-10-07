@@ -30,7 +30,6 @@ function mulberry(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = 
   async function boardPlain() {
     const n = await page.locator('.bus').count();
     if (!n) { const s = await snapshot(); throw new Error('no buses at ' + s.scene + ' ' + JSON.stringify(s.choices) + ' t=' + s.t); }
-    for (let i = 0; i < n; i++) { const b = page.locator('.bus').nth(i).locator('button', { hasText: /Look closer|Regarder|Katso/ }); if (await b.count()) await b.click(); }
     const plain = page.locator('.bus').filter({ has: page.locator('.bus-sign.paper') }).first();
     await plain.locator('.board').click(); await page.waitForTimeout(15);
   }
@@ -41,7 +40,9 @@ function mulberry(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = 
     random: { conflict: 1, neutral: 1, comply: 1 },
     sensible: { conflict: 0.6, neutral: 1.2, comply: 0.8 },
   };
-  const TRAPS = /Board the coach|Get in the lift|Open the door|hot springs|^Confirm\.|^Get in\.|Proceed to the coaches|Get on\. It|Answer him|Demand to be let off|Don't board anything|Board\. The email|Wait\. It isn't|Wait longer|Read the email|Shout back|Walk twenty minutes/;
+  const TRAPS = /Board the coach|Get in the lift|Open the door|hot springs|^Confirm\.|^Get in\.|Proceed to the coaches|Get on\. It|Answer him|Demand to be let off|Don't board anything|Board\. The email|Wait\. It isn't|Wait longer|Read the email|Shout back|Walk twenty minutes|Say yes to the woman|Stay in a little|Float\.|Wait\. They said|Make a fuss|Step back|Stop\. Let them/;
+  // Business Class hides the bus cards' text; these policies read the cards, so none of them takes the upgrade except 'random'
+  const NO_UPGRADE = /Say yes to the woman/;
 
   async function runPolicy(name, seed) {
     const r = mulberry(seed);
@@ -54,14 +55,21 @@ function mulberry(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = 
     for (let step = 0; step < 260; step++) {
       const s = await snapshot();
       if (s.ending) return { policy: name, seed, ending: s.ending, steps: step, nerves: s.nerves, dread: s.dread, strikes: s.strikes, gated: gatedEncounters, gatedLabels: [...gatedLabels], trace };
+      if (s.scene === 'lind_read') {
+        // the flood: the only way out is to read everything on the phone, so the policy does
+        await page.evaluate(() => { document.querySelector('.tab[data-tab="chat"]').click(); document.querySelector('.tab[data-tab="sms"]').click(); for (let k = 0; k < 60; k++) { document.querySelector('.tab[data-tab="email"]').click(); const row = document.querySelector('.msg-row.unread'); if (!row) break; row.click(); } });
+        await page.waitForTimeout(15);
+      }
       const gatedNow = s.choices.filter((c) => c.gated);
       gatedEncounters += gatedNow.length; gatedNow.forEach((c) => gatedLabels.add(s.scene + ':' + c.label.slice(0, 30)));
       if (s.buses.length && name !== 'compliant2') {
         // everyone boards the plain bus in these tests; the bus puzzle is tested elsewhere
         const anyPlain = s.buses.some((b) => b.plain);
         if (anyPlain && r() < 0.85) { await boardPlain(); trace.push([s.scene, 'BUS plain', s.nerves | 0, s.dread | 0]); continue; }
+        if (!anyPlain && (name === 'random' || !s.choices.some((c) => !c.gated))) { const i = (r() * s.buses.length) | 0; await page.locator('.bus').nth(i).locator('.board').click(); await page.waitForTimeout(15); trace.push([s.scene, 'BUS blind #' + i, s.nerves | 0, s.dread | 0]); continue; }
       }
       let open = s.choices.filter((c) => !c.gated);
+      if (name !== 'random') open = open.filter((c) => !NO_UPGRADE.test(c.label));
       if (name === 'sensible') { const safe = open.filter((c) => !TRAPS.test(c.label)); if (safe.length) open = safe; }
       if (!open.length) { trace.push([s.scene, 'NO OPTIONS', s.nerves | 0, s.dread | 0]); return { policy: name, seed, ending: 'STUCK', steps: step, nerves: s.nerves, dread: s.dread, strikes: s.strikes, gated: gatedEncounters, gatedLabels: [...gatedLabels], trace }; }
       const w = WEIGHTS[name];
@@ -80,7 +88,7 @@ function mulberry(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = 
   // a careful human route (English labels)
   async function careful() {
     await page.evaluate(() => { Game.newRun(); Game.setLang('en'); });
-    const seq = ['Lane A', 'Check your phone first', '“31B.”', 'Say hello to 31C', 'Look out of the window at London', 'Order a coffee', 'Ask 31C if he saw', 'Ask a flight attendant', 'Look around', '“I don\'t think', 'Count the rows', 'Ask 31C', 'Find a human', 'Thank her', 'Talk to the man in the fleece', 'Talk to the woman with the toddler', 'Find the man from 31C', 'Go where the fleece'];
+    const seq = ['Lane A', 'Look for it', '“31B.”', 'Say hello to 31C', 'Look out of the window at London', 'Order a coffee', 'Ask 31C if he saw', 'Ask a flight attendant', 'Look around', '“I don\'t think', 'Count the rows', 'Ask 31C', 'Find a human', 'Thank her', 'Talk to the man in the fleece', 'Talk to the woman with the toddler', 'Find the man from 31C', 'Go where the fleece'];
     let gated = 0; const gl = [];
     const step = async (label) => { let s = await snapshot(); if (s.scene === 'phone_dies') { await clickChoice('Put it face down'); s = await snapshot(); } const g = s.choices.filter((c) => c.gated); gated += g.length; g.forEach((c) => gl.push(s.scene + ':' + c.label.slice(0, 30))); if (!s.choices.some((c) => c.label.includes(label.replace(/\.$/, '')))) return; await clickChoice(label); };
     for (const l of seq) await step(l);
@@ -94,7 +102,7 @@ function mulberry(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = 
     await boardPlain();
     for (const l of ['Arrive.', 'Join the queue', 'Share the UK261', 'Compare notes', 'Buy water']) await step(l);
     s = await snapshot(); while (s.scene === 'airport') { await step('Wait.'); s = await snapshot(); }
-    for (const l of ['Go to the gate', 'Laugh with them', 'Get on the bus', 'Stay on', 'Close your eyes']) await step(l);
+    for (const l of ['Go to the gate', 'Laugh with them', 'Say nothing yourself', 'Hold.', 'Get on the bus', 'Stay on', 'Close your eyes']) await step(l);
     s = await snapshot();
     return { policy: 'careful', ending: s.ending, nerves: s.nerves, dread: s.dread, strikes: s.strikes, gated, gatedLabels: gl };
   }
@@ -106,8 +114,9 @@ function mulberry(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = 
     console.log(`${rres.policy.padEnd(9)} seed=${String(rres.seed || '').padEnd(3)} → ${String(rres.ending).padEnd(40)} steps=${String(rres.steps ?? '').padEnd(3)} N=${rres.nerves | 0} D=${rres.dread | 0} strikes=${rres.strikes} gatedSeen=${rres.gated}`);
   }
   // one detailed trace per policy
-  for (const pol of ['sensible']) {
-    const rr = results.find((x) => x.policy === pol);
+  for (const pol of ['sensible', 'STUCK']) {
+    const rr = pol === 'STUCK' ? results.find((x) => x.ending === 'STUCK') : results.find((x) => x.policy === pol);
+    if (!rr) continue;
     console.log('\n--- trace', pol, rr.ending);
     console.log(rr.trace.map((t) => t.join(' | ')).join('\n'));
     console.log('gated:', rr.gatedLabels.join(' ; '));

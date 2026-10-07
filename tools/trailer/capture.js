@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 const path = require('path'); const fs = require('fs');
 (async () => {
-  const FPS = 30, DUR = 10, N = FPS * DUR;
+  const FPS = 30, DUR = 44, N = FPS * DUR;
   fs.mkdirSync('frames', { recursive: true });
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });

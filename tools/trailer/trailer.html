@@ -41,6 +41,9 @@ html, body { margin: 0; background: #0b0a09; width: 1280px; height: 720px; overf
 .phonetop { display: flex; justify-content: space-between; padding: 10px 16px; font-size: 16px; color: #8f958f; border-bottom: 1px solid #1c1e22; }
 .chat { padding: 16px; }
 .chat .b { background: #11161e; border: 1px solid #1e2a3f; padding: 10px 14px; margin: 8px 0; line-height: 1.2; }
+.choice.gated { text-decoration: line-through; color: #837b68; background: #0f0e0c; box-shadow: inset -3px -3px 0 #0b0a09, 0 0 0 3px #0b0a09; }
+.choice.gated::before { color: #4a4337; }
+.why { position: absolute; left: 100px; right: 80px; top: 686px; font-size: 24px; color: #a09884; font-style: italic; }
 .fade { position: absolute; inset: 0; background: #000; pointer-events: none; }
 </style></head><body><div id="stage"></div>
 <script src="art.js"></script>
@@ -49,8 +52,9 @@ const stage = document.getElementById('stage');
 const C = ART.C;
 function seededRng(seed) { let a = seed >>> 0; return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function fakeG(D, flags = {}, extra = {}) { return Object.assign({ D, t: 1440 + 4 * 60, S: Object.assign({ phoneDead: false, batt: 1 }, extra), has: (k) => !!flags[k] }, {}); }
-function paint(key, frame, D, flags, extra) {
+function paint(key, frame, D, flags, extra, age) {
   const cv = document.createElement('canvas'); cv.className = 'art'; cv.width = 160; cv.height = 72;
+  if (age != null) cv._t0 = Date.now() - age * 1000;   // drive the painter's own clock
   const c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
   const r = seededRng(1000 + frame * 7919);
   ART.scenes[key](c, r, fakeG(D, flags, extra));
@@ -62,62 +66,74 @@ const BOARD2 = '                                              STATUS: ▮▮▮�
 const BOARD3 = '                                              STATUS: DIVERTED  ';
 const FLAP = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789▮▯·-';
 function header(t) {
-  const n = Math.min(100, Math.max(0, (t - 2) * 9)), d = Math.min(100, Math.max(0, (t - 1.5) * 11));
+  let n = Math.min(100, Math.max(0, (t - 7) * 2.9)), d = Math.min(100, Math.max(0, (t - 6.5) * 3.3));
+  if (t >= 34) { n = Math.max(0, 100 - (t - 34) * 22); d = 100; }   // the springs: nerves drain, dread stays
   return `<div class="header"><div class="brand">DIVERTED<small>ALBION ATLANTIC · AB 0271 · LHR → LAX</small></div><div class="meters"><span>NERVES<span class="track"><span class="fill n" style="width:${n}%"></span></span></span><span>DREAD<span class="track"><span class="fill d" style="width:${d}%"></span></span></span></div></div>`;
 }
+const fade01 = (x) => Math.min(1, Math.max(0, x));
 function render(t, frame) {
   stage.innerHTML = '';
   const r = seededRng(77 + frame * 31);
   let html = '', nodes = [];
-  if (t < 2.2) {
-    // the departure board, which flips to the title
+  if (t < 6.5) {
+    // the departure board: one line, then the status, then the flaps, then the title
     let line2;
-    if (t < 1.1) line2 = BOARD2; else { const k = Math.min(1, (t - 1.1) / 0.8); line2 = BOARD3.split('').map((ch, i) => { const target = BOARD3[i], prev = BOARD2[i]; if (target === prev) return ch; const pos = (i - 54) / 10; return k > pos + 0.12 ? target : FLAP[(r() * FLAP.length) | 0]; }).join(''); }
-    html += `<div class="board">${BOARD1}\n${line2}</div>`;
-    if (t > 1.9) html += `<div class="big" style="opacity:${Math.min(1, (t - 1.9) / 0.3)}">DIVERTED</div>`;
-  } else if (t < 4.0) {
+    if (t < 1.2) line2 = ' '.repeat(BOARD2.length);
+    else if (t < 3.2) line2 = BOARD2;
+    else { const k = Math.min(1, (t - 3.2) / 1.2); line2 = BOARD3.split('').map((ch, i) => { const target = BOARD3[i], prev = BOARD2[i]; if (target === prev) return ch; const pos = (i - 54) / 12; return k > pos + 0.12 ? target : FLAP[(r() * FLAP.length) | 0]; }).join(''); }
+    html += `<div class="board" style="opacity:${1 - fade01((t - 5.0) / 0.5)}">${BOARD1}\n${line2}</div>`;
+    if (t > 5.4) html += `<div class="big" style="opacity:${fade01((t - 5.4) / 0.6)}">DIVERTED</div>`;
+  } else if (t < 12.0) {
     html += header(t);
     nodes.push(paint('cabin', frame, 1, {}));
-    const k = t - 2.2;
-    html += `<div class="cap">${k > 0.2 ? '<span class="voice">“A customer is unwell. We are diverting to Reykjavík.”</span>' : ''}${k > 1.0 ? ' He is sorry. He says the word twice.' : ''}</div>`;
-  } else if (t < 5.6) {
+    const k = t - 6.5;
+    html += `<div class="cap">${k > 0.6 ? '<span class="voice">“A customer is unwell. We are diverting to Reykjavík.”</span>' : ''}${k > 3.1 ? ' He is sorry. He says the word twice.' : ''}</div>`;
+  } else if (t < 15.5) {
     html += header(t);
-    const k = t - 4.0;
+    nodes.push(paint('terminal', frame, 2, {}));
+    const k = t - 12.0;
+    html += `<div class="cap">${k > 0.6 ? '“Don’t follow the emails,” she said.' : ''}${k > 1.8 ? ' “There are buses.”' : ''}</div>`;
+  } else if (t < 22.5) {
+    html += header(t);
+    const k = t - 15.5;
     const specs = [
       ['A white coach with no livery at all', 'ALBION ATL → HOTEL', 'paper', { livery: '#c7c3b6', windows: 'dim', passengers: 'slumped', sign: 'paper', driver: 'hivis', ground: 'night' }],
       ['A navy coach with a gold crest on the flank', 'ALBION ATLANTIC WELCOMES YOU', 'led', { livery: '#1b2a4a', stripe: '#c9a227', windows: 'warm', passengers: 'upright', sign: 'led', driver: 'purser', ground: 'night' }],
       ['A yellow bus in city livery', 'FLYBUS · REYKJAVÍK BSÍ', 'print', { livery: '#cfae36', windows: 'dim', passengers: 'luggage', sign: 'print', driver: 'plain', ground: 'night' }],
     ];
     const grid = document.createElement('div'); grid.className = 'buses';
-    specs.forEach(([name, sign, style, spec], i) => { const d = document.createElement('div'); d.className = 'bus'; d.style.opacity = Math.min(1, Math.max(0, (k - i * 0.25) / 0.3)); d.appendChild(busCanvas(spec, 11 + i * 31)); const n = document.createElement('div'); n.className = 'name'; n.textContent = name; d.appendChild(n); const s = document.createElement('div'); s.className = 'sign ' + style; s.textContent = sign; d.appendChild(s); grid.appendChild(d); });
+    specs.forEach(([name, sign, style, spec], i) => { const d = document.createElement('div'); d.className = 'bus'; d.style.opacity = fade01((k - i * 0.8) / 0.5); d.appendChild(busCanvas(spec, 11 + i * 31)); const n = document.createElement('div'); n.className = 'name'; n.textContent = name; d.appendChild(n); const s = document.createElement('div'); s.className = 'sign ' + style; s.textContent = sign; d.appendChild(s); grid.appendChild(d); });
     nodes.push(grid);
-    html += `<div class="cap">${k > 0.9 ? '<span class="bubble sms">+354 ··· ····&nbsp;&nbsp; dont get on the nice one</span>' : ''}</div>`;
-  } else if (t < 7.0) {
+    html += `<div class="cap">${k > 4.1 ? '<span class="bubble sms">+354 ··· ····&nbsp;&nbsp; dont get on the nice one</span>' : ''}</div>`;
+  } else if (t < 28.0) {
     html += header(t);
-    const k = t - 5.6;
-    const cv = paint('room', frame, 5, { seen: k > 0.7, looked1: true }); cv.style.width = '740px'; nodes.push(cv);
-    html += `<div class="phonepanel"><div class="phonetop"><span>▮▯▯▯ · 4G</span><span>04:50</span><span style="color:#c8362c">3%</span></div><div class="chat"><div class="b">Hi! I see you're in room 214. The coach is waiting for you in the car park.</div>${k > 0.5 ? '<div class="b" style="border-color:#2e4f8f">Please do not look out of the window. 🙂</div>' : ''}</div></div>`;
-    html += `<div class="cap"><span class="whisper">There is something on your phone you have not read.</span></div>`;
-  } else if (t < 8.4) {
+    const k = t - 22.5;
+    const cv = paint('room', frame, 5, { seen: k > 2.7, looked1: true }); cv.style.width = '740px'; nodes.push(cv);
+    html += `<div class="phonepanel"><div class="phonetop"><span>▮▯▯▯ · 4G</span><span>04:50</span><span style="color:#c8362c">3%</span></div><div class="chat"><div class="b">Hi! I see you're in room 214. The coach is waiting for you in the car park.</div>${k > 1.5 ? '<div class="b" style="border-color:#2e4f8f">Please do not look out of the window. 🙂</div>' : ''}</div></div>`;
+    html += `<div class="cap">${k > 3.3 ? '<span class="whisper">Do not look out of the window, it said. Please.</span>' : ''}</div>`;
+  } else if (t < 34.0) {
     html += header(t);
-    const k = t - 7.0;
-    const cv = paint('phone', frame, 5, {}, { phoneDead: true, batt: 0 });
-    // drive the painter's own clock so the screen dies on cue
-    cv._t0 = Date.now() - Math.max(0, (k - 0.1)) * 1000 * 3.5;
-    nodes.push(cv);
-    html += `<div class="choice" style="opacity:${Math.min(1, Math.max(0, (k - 0.6) / 0.3))}">Put it face down. Go back to sleep. Hope you wake up.</div>`;
+    const k = t - 28.0;
+    // the screen is on for a second, flickers for half of one, and goes dark
+    nodes.push(paint('phone', frame, 5, {}, { phoneDead: true, batt: 0 }, Math.max(0, k) * 3.37));
+    html += `<div class="choice" style="opacity:${fade01((k - 2.6) / 0.5)}">Put it face down. Go back to sleep. Hope you wake up.</div>`;
+  } else if (t < 38.5) {
+    html += header(t);
+    const k = t - 34.0;
+    nodes.push(paint('lagoon', frame, 5, {}));
+    const gated = k > 2.0;
+    html += `<div class="choice${gated ? ' gated' : ''}" style="opacity:${fade01((k - 0.7) / 0.5)}">Get out. Find the shuttle back to the airport.</div>`;
+    html += `<div class="why" style="opacity:${fade01((k - 2.3) / 0.5)}">You cannot get out. The water is warm, and you are very tired, and nobody has asked you to.</div>`;
   } else {
-    const k = t - 8.4;
-    html += `<div class="big" style="top:200px">DIVERTED</div><div class="sub" style="top:330px">A HOSPITALITY HORROR · TEXT · 20–30 MINUTES<br><b>EN · FR · ÍS · FI</b><br><br>${k > 0.5 ? '<span style="color:#cfc8b4">Best played with earphones, and the sound on.</span>' : ''}</div>`;
-    if (k > 1.2) html += `<div class="fade" style="opacity:${Math.min(1, (k - 1.2) / 0.4)}"></div>`;
+    const k = t - 38.5;
+    html += `<div class="big" style="top:200px;opacity:${fade01(k / 0.5)}">DIVERTED</div><div class="sub" style="top:330px;opacity:${fade01((k - 0.6) / 0.5)}">A HOSPITALITY HORROR · TEXT · 20–30 MINUTES<br><b>EN · FR · ÍS · FI</b><br><br>${k > 1.8 ? '<span style="color:#cfc8b4">Best played with earphones, and the sound on.</span>' : ''}</div>`;
+    if (k > 4.1) html += `<div class="fade" style="opacity:${fade01((k - 4.1) / 1.2)}"></div>`;
   }
   stage.innerHTML = html + '<div class="dither"></div><div class="scan"></div><div class="vig"></div>';
-  nodes.forEach((n) => stage.insertBefore(n, stage.firstChild.nextSibling || null));
-  // put art behind captions: append after header
   nodes.forEach((n) => { stage.appendChild(n); });
   // keep overlays on top
   ['dither', 'scan', 'vig'].forEach((cls) => stage.appendChild(stage.querySelector('.' + cls)));
-  if (t < 2.2 && t > 0 && r() < 0.08) stage.querySelector('.board').style.opacity = '0.85';   // a flicker
+  if (t < 5.0 && t > 0 && r() < 0.08) stage.querySelector('.board').style.opacity = '0.85';   // a flicker
 }
 window.renderFrame = render;
 </script></body></html>

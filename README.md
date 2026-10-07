@@ -4,7 +4,7 @@ Your flight from London to Los Angeles has landed in Reykjavík instead. Nobody 
 
 Trust the wrong mail, take the wrong bus, make the wrong complaint, and it's game over.
 
-A text-based browser game in English, French, Icelandic and Finnish (you pick a boarding lane). No install, no build step, no dependencies. The only external request is two Google Fonts (VT323, Press Start 2P); the game works without them. 20–30 minutes per run, 13 endings.
+A text-based browser game in English, French, Icelandic and Finnish (you pick a boarding lane). No install, no build step, no dependencies. The only external request is two Google Fonts (VT323, Press Start 2P); the game works without them. 20–30 minutes per run, six endings.
 
 ## Play it
 
@@ -42,10 +42,10 @@ There is nothing to compile. Every file is served as-is; `index.html` loads `art
 | `audio.js` | Procedural sound: one Web Audio soundscape per scene, event cues (phone buzz, knock, chime), a dread drone, a nerves heartbeat, a mute toggle. No audio files. |
 | `art.js` | Procedural pixel art: a painter per scene (flickering vignettes) and a bus-portrait generator whose details are the tells. No image files. |
 | `engine.js` | The runner: scene graph, clock, scheduled messages, the two gauges and option gating, bus inspection, language switching, endings gallery (`localStorage`). No framework. |
-| `content.js` | Every word in the game (English): scenes, choices, messages, the chatbot's answers, buses, 13 endings, interface strings. This is the file to edit if you want to change the story. |
+| `content.js` | Every word in the game (English): scenes, choices, messages, the chatbot's answers, buses, six endings, interface strings. This is the file to edit if you want to change the story. |
 | `content.fr.js`, `content.is.js`, `content.fi.js` | The French, Icelandic and Finnish versions, generated from `content.js` by string substitution (see DESIGN.md §5c). Edit the English, update the dictionary, and run `python3 tools/i18n.py build fr tools/dict_fr.json tools/dict_fr_broken.json` (French), `python3 tools/i18n.py build is tools/dict_is.json`, `python3 tools/i18n.py build fi tools/dict_fi.json`. The airline's lines are translated badly on purpose in all three (see DESIGN.md §5c); `tools/voices.json` lists which keys those are. |
 | `design.html` | The design notes rendered as a page in the game's style, in all four languages with a switcher; linked from the title screen in the interface's language. Built from `DESIGN.md`, `DESIGN.fr.md`, `DESIGN.is.md`, `DESIGN.fi.md`. |
-| `tools/` | `i18n.py` and the dictionaries (`dict_fr.json`, `dict_fr_broken.json`, `dict_is.json`, `dict_fi.json`), `build_design.py`, and `playtest.js` (automated playtest policies; needs Node and Playwright). Not needed to play or deploy. |
+| `tools/` | `i18n.py` and the dictionaries (`dict_fr.json`, `dict_fr_broken.json`, `dict_is.json`, `dict_fi.json`), `build_design.py`, and three Playwright harnesses, none needed to play or deploy: `playtest.js` (fixed policies, one language at a time), `playtest_wide.js` (many seeds per policy with coverage and funnel statistics; reasons in English whatever language is on screen) `learn.js` (agents that play repeatedly and learn across runs — Monte Carlo, UCB, a last-two-choices blamer, a replayer, and two that read the ending — reporting how many runs each needs to win), and `play_server.js`, a plain-text HTTP front for the game so that a person at a terminal or a language model with a shell can play it (`curl` one URL per move; several players at once with different `sid`s). |
 | `DESIGN.md` | Design rationale — what was borrowed from *No, I'm Not a Human* and *Don't Look Outside*, how the source thread was adapted, why each mechanic exists. |
 
 ## Editing the story
